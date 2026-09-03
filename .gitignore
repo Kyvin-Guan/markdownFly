@@ -4,3 +4,6 @@ dist/
 .DS_Store
 *.log
 .env
+
+# Third-party reference themes for design study (not vendored)
+reference-themes/
