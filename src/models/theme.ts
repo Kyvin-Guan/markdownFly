@@ -10,6 +10,10 @@ export interface ThemeColors {
   accent: string;
   codeBackground: string;
   codeText: string;
+  titleBackground?: string;
+  titleText?: string;
+  /** Background color used to mark @(highlight=...) lines in code blocks */
+  highlightBackground?: string;
 }
 
 export interface ThemeFonts {
@@ -32,4 +36,5 @@ export interface Theme {
   colors: ThemeColors;
   fonts: ThemeFonts;
   fontSize: ThemeFontSizes;
+  shikiTheme?: string;
 }

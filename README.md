@@ -46,8 +46,11 @@ pnpm link --global
 # Convert a single file (auto-named to slides.pptx)
 mfly slides.md
 
+# Specify theme (clean, academic, dark, business, warm)
+mfly slides.md -t dark
+
 # Specify custom output path
-mfly slides.md -o presentation.pptx
+mfly slides.md -t academic -o presentation.pptx
 
 # Batch convert multiple Markdown files
 mfly docs/*.md
@@ -71,6 +74,18 @@ mfly config delete OPENAI_API_KEY
 
 ---
 
+## 🎨 Built-in Themes
+
+| Theme | Style / Mood | Primary Colors | Best For |
+| :--- | :--- | :--- | :--- |
+| **`clean`** *(default)* | Modern clean tech | White `#FFFFFF` / Blue `#2563EB` | General developer presentations & tech sharing |
+| **`academic`** | Scholarly LaTeX Beamer | White `#FFFFFF` / Prussian Blue `#003366` | Papers, algorithms, research defenses |
+| **`dark`** | Dark mode geek | Dark Slate `#0F172A` / Cyan `#38BDF8` | Developer meetups, terminal & coding decks |
+| **`business`** | Professional corporate | Soft Slate `#F8FAFC` / Deep Navy `#1E3A8A` | Business reviews, executive pitches & reports |
+| **`warm`** | Warm paper / Marp Gaia | Warm Sand `#FDFBF7` / Forest Green `#065F46` | Keynotes, design retrospectives & narratives |
+
+---
+
 ## 📝 Markdown Syntax Guide
 
 ### Slide Splitting Rules
@@ -83,10 +98,87 @@ mfly config delete OPENAI_API_KEY
 
 ```yaml
 ---
-theme: default
+theme: dark # Options: clean, academic, dark, business, warm
 author: "Your Name"
-footer: "Confidential - 2026"
+footer: "Confidential - {page} / {total}" # {page}/{total}/{section}/{title}
+resource_dir: ./assets # Base directory for relative image paths
+layout: code # Optional default layout for content slides
 ---
+```
+
+### In-Slide Layout (Grid)
+
+Split a slide into columns and rows with standalone lines — no extra markup:
+
+```markdown
+## 架构概览
+
+### 架构图
+```mermaid
+graph LR
+    A[Client] --> B[API]
+```
+<->                   <!-- 左右分栏:左边放图 -->
+
+### 关键点
+- 低延迟
+- 可扩展
+- 成本可控
+===                   <!-- 上下分块:下面是另一行内容 -->
+
+### 总结
+> [!TIP]
+> `===` 让一页拆成上下块,适合前后对比。
+```
+
+- `<->` (standalone line): horizontal separator → **columns** (side-by-side).
+- `===` (standalone line): vertical separator → **rows** (stacked).
+- Combine both for grids. Markers inside code blocks are never rewritten.
+
+### Slide Directives `@(...)`
+
+A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide options:
+
+```markdown
+## 表格变图表
+
+| 季度 | 订单量 |
+| :--- | :--- |
+| Q1 | 320 |
+| Q2 | 580 |
+
+@(chart=bar, notes=这里口头展开Q1-2数据)
+```
+
+| Directive | Value | Effect |
+| :--- | :--- | :--- |
+| `layout` | `title` / `section` / `content` / `code` / `quote` | Override auto-detected layout |
+| `notes` | text | Speaker notes for this slide |
+| `chart` | `bar` / `line` / `pie` | Render the first table as a chart |
+| `highlight` | `2-4,6` | Highlight lines in the slide's code block |
+| `background` | URL/path | Slide background image |
+| `steps` | `true` | Progressive reveal (reserved) |
+
+### Callouts
+
+```markdown
+> [!NOTE]
+> Important point to remember.
+
+> [!TIP]
+> Helpful suggestion.
+
+> [!WARNING]
+> Watch out for this.
+```
+
+Supported variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` / `DANGER` — rendered as theme-styled accent cards.
+
+### Task Lists
+
+```markdown
+- [x] Completed item
+- [ ] Upcoming item
 ```
 
 ### Code Blocks with Syntax Highlighting
@@ -102,6 +194,13 @@ function greet(user: User): string {
   return `Hello, ${user.name}!`;
 }
 ```
+````
+
+````markdown
+```python
+def quick_sort(arr): ...
+```
+@(highlight=1,3-4)   <!-- highlight specific lines -->
 ````
 
 ### Diagram Code Blocks
@@ -130,6 +229,11 @@ digraph Architecture {
 }
 ```
 ````
+
+### Footnotes
+
+- A standalone `===` always means a row break — setext-style headlines (`Title` + `===`) are `# Headings` in mfly.
+- A standalone `<->` always means a column break; use `***text***` for bold italic (the moffee convention of `<->bold and italic<->` is deliberately not adopted to avoid ambiguity).
 
 ---
 

@@ -29,25 +29,37 @@ export async function renderPresentation(
   pptx.author = presentation.config.author ?? 'MarkdownFly';
   pptx.title = presentation.slides[0]?.title ?? 'Presentation';
 
+  const { resourceDir } = presentation.config;
+
   // Build render context
   const ctx = {
-    highlightCode: async (code: string, language: string) => {
-      return highlightCode(code, language, theme) as unknown as Promise<PptxGenJS.TextProps[]>;
+    highlightCode: async (code: string, language: string, highlightLines: number[] = []) => {
+      return highlightCode(code, language, theme, highlightLines) as unknown as Promise<PptxGenJS.TextProps[]>;
     },
     resolveImage: async (src: string) => {
-      return resolveImage(src, inputPath);
+      return resolveImage(src, resourceDir || inputPath);
     },
     renderDiagram: async (diagramType: string, code: string) => {
       return renderDiagram(diagramType, code, theme);
     },
+    footerTemplate: presentation.config.footer,
+    pageNumber: 0,
+    totalSlides: presentation.slides.length,
+    currentSection: '',
   };
 
   // Render each slide
-  for (const node of presentation.slides) {
+  for (let i = 0; i < presentation.slides.length; i++) {
+    const node = presentation.slides[i];
     const slide = pptx.addSlide();
 
     // Set default background
     slide.background = { color: theme.colors.background };
+
+    ctx.pageNumber = i + 1;
+    if (node.layout === 'section' && node.title) {
+      ctx.currentSection = node.title;
+    }
 
     await renderSlideLayout(slide, node, theme, ctx);
   }

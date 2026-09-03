@@ -33,7 +33,11 @@ export async function renderCodeSlide(
   // Code blocks
   for (const element of node.elements) {
     if (element.type === 'code') {
-      const runs = await ctx.highlightCode(element.content, element.language ?? 'text');
+      const runs = await ctx.highlightCode(
+        element.content,
+        element.language ?? 'text',
+        element.highlightLines,
+      );
 
       slide.addText(runs, {
         x: 0.5,

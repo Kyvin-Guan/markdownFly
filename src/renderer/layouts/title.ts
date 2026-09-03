@@ -11,8 +11,13 @@ export function renderTitleSlide(
   node: SlideNode,
   theme: Theme,
 ): void {
+  const bgColor = theme.colors.titleBackground ?? theme.colors.primary;
+  const textColor = theme.colors.titleText ?? 'FFFFFF';
+  const subtitleColor = textColor === 'FFFFFF' ? 'FFFFFFCC' : theme.colors.secondary;
+  const metaColor = textColor === 'FFFFFF' ? 'FFFFFF99' : theme.colors.secondary;
+
   // Background
-  slide.background = { color: theme.colors.primary };
+  slide.background = { color: bgColor };
 
   // Title
   if (node.title) {
@@ -23,7 +28,7 @@ export function renderTitleSlide(
       h: 1.5,
       fontSize: theme.fontSize.title,
       fontFace: theme.fonts.heading,
-      color: 'FFFFFF',
+      color: textColor,
       bold: true,
       align: 'center',
       valign: 'middle',
@@ -39,7 +44,7 @@ export function renderTitleSlide(
       h: 0.8,
       fontSize: theme.fontSize.body,
       fontFace: theme.fonts.body,
-      color: 'FFFFFFCC',
+      color: subtitleColor,
       align: 'center',
       valign: 'middle',
     });
@@ -56,7 +61,7 @@ export function renderTitleSlide(
       h: 0.6,
       fontSize: theme.fontSize.small,
       fontFace: theme.fonts.body,
-      color: 'FFFFFF99',
+      color: metaColor,
       align: 'center',
     });
   }

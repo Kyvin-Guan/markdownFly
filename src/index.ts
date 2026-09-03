@@ -55,8 +55,16 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
 
 // Re-export for library use
 export { parseMarkdown } from './parser/index.js';
-export { renderPresentation } from './renderer/index.js';
-export { getTheme } from './themes/index.js';
+export {
+  getTheme,
+  themes,
+  cleanTheme,
+  academicTheme,
+  darkTheme,
+  businessTheme,
+  warmTheme,
+  defaultTheme,
+} from './themes/index.js';
 export { renderDiagram, isDiagramLanguage } from './diagrams/index.js';
 export type { Presentation, SlideNode, SlideElement } from './models/slide.js';
 export type { Theme } from './models/theme.js';

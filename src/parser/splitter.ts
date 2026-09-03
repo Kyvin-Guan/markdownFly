@@ -8,6 +8,7 @@ import type {
   SlideNode,
   SlideElement,
   SlideLayout,
+  SlideDirectives,
   TextElement,
   HeadingElement,
   ListElement,
@@ -16,10 +17,17 @@ import type {
   TableElement,
   BlockquoteElement,
   DiagramElement,
+  BreakElement,
+  CalloutElement,
 } from '../models/slide.js';
 
 /** Diagram languages that trigger DiagramElement instead of CodeElement */
 const DIAGRAM_LANGUAGES = new Set(['mermaid', 'dot', 'graphviz', 'echarts']);
+
+/** Callout variants recognized in blockquotes: > [!NOTE] / [!TIP] / ... */
+const CALLOUT_VARIANTS = new Set([
+  'note', 'info', 'tip', 'success', 'warning', 'caution', 'danger',
+]);
 
 /**
  * Recursively extract plain text from mdast inline/phrasing nodes
@@ -28,10 +36,101 @@ function extractText(node: PhrasingContent | Content): string {
   if ('value' in node && typeof node.value === 'string') {
     return node.value;
   }
+  // Soft line breaks inside blockquotes/lists map to "\n"
+  // (@types/mdast 4.0.4 omits Softbreak from its unions — cast to check)
+  if ((node as { type: string }).type === 'softbreak') {
+    return '\n';
+  }
   if ('children' in node && Array.isArray(node.children)) {
     return (node.children as PhrasingContent[]).map(extractText).join('');
   }
   return '';
+}
+
+/**
+ * Parse an HTML comment node produced by preprocess.ts
+ * Returns a BreakElement or directive key/values
+ */
+function parseComment(value: string): BreakElement | { directives: Record<string, string> } | null {
+  const match = value.match(/<!--\s*mfly:(row|col|dir)\s*(.*?)\s*-->/s);
+  if (!match) return null;
+
+  if (match[1] === 'row' || match[1] === 'col') {
+    return { type: 'break', direction: match[1] } satisfies BreakElement;
+  }
+
+  if (match[1] === 'dir') {
+    const raw = decodeURIComponent(match[2]);
+    return { directives: parseDirectiveString(raw) };
+  }
+
+  return null;
+}
+
+/**
+ * Parse "@(key=value, key=value, ...)" into a record.
+ * Values may be quoted ("...", '...') to contain commas or parens.
+ */
+export function parseDirectiveString(input: string): Record<string, string> {
+  const inner = input.replace(/^@\(/, '').replace(/\)$/, '').trim();
+  const result: Record<string, string> = {};
+  if (!inner) return result;
+
+  const re = /([A-Za-z][A-Za-z0-9_-]*)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^,)]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(inner)) !== null) {
+    let value = m[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    result[m[1]] = value;
+  }
+  return result;
+}
+
+/** Build the typed directive object for a slide */
+function toDirectives(raw: Record<string, string>): SlideDirectives {
+  const d: SlideDirectives = {};
+  if (raw.layout) d.layout = raw.layout;
+  if (raw.notes) d.notes = raw.notes;
+  if (raw.chart) d.chart = raw.chart;
+  if (raw.highlight) d.highlight = raw.highlight;
+  if (raw.background) d.background = raw.background;
+  if (raw.steps) d.steps = raw.steps === 'true' || raw.steps === 'yes' || raw.steps === '1';
+  return d;
+}
+
+/** Parse "2-4,6,8-9" style line ranges into a list of 1-based numbers */
+export function parseHighlightRanges(spec: string): number[] {
+  const lines = new Set<number>();
+  for (const part of spec.split(',')) {
+    const range = part.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+    if (range) {
+      const from = Number(range[1]);
+      const to = Number(range[2]);
+      for (let n = Math.min(from, to); n <= Math.max(from, to); n++) lines.add(n);
+    } else {
+      const single = part.trim().match(/^\d+$/);
+      if (single) lines.add(Number(single));
+    }
+  }
+  return [...lines].sort((a, b) => a - b);
+}
+
+/** Detect "> [!NOTE] Custom title ..." style callouts (moffee-compatible). */
+function parseCallout(content: string): CalloutElement | null {
+  const lines = content.split('\n');
+  const markerMatch = lines[0]?.match(/^\s*\[!(.*?)\]\s*(.*?)\s*$/);
+  if (!markerMatch) return null;
+  const variant = markerMatch[1].toLowerCase();
+  if (!CALLOUT_VARIANTS.has(variant)) return null;
+  const title = markerMatch[2].trim() || undefined;
+  return {
+    type: 'callout',
+    variant,
+    title,
+    content: lines.slice(1).join('\n').trim(),
+  } satisfies CalloutElement;
 }
 
 /**
@@ -64,14 +163,25 @@ function nodeToElement(node: Content): SlideElement | null {
     }
 
     case 'list': {
+      // remark-gfm sets checked to true/false for task items and null for
+      // plain items — only treat boolean values as task-list markers.
+      const hasCheckboxes = node.children.some(
+        (item) => typeof item.checked === 'boolean',
+      );
       const items = node.children.map((item) => {
         return item.children.map((child) => extractText(child)).join('');
       });
-      return {
+      const result: ListElement = {
         type: 'list',
         items,
         ordered: node.ordered ?? false,
-      } satisfies ListElement;
+      };
+      if (hasCheckboxes) {
+        result.checked = node.children.map((item) =>
+          typeof item.checked === 'boolean' ? item.checked : false,
+        );
+      }
+      return result;
     }
 
     case 'code': {
@@ -83,11 +193,12 @@ function nodeToElement(node: Content): SlideElement | null {
           content: node.value,
         } satisfies DiagramElement;
       }
-      return {
+      const element = {
         type: 'code',
         content: node.value,
         language: node.lang ?? undefined,
       } satisfies CodeElement;
+      return element;
     }
 
     case 'image': {
@@ -117,10 +228,20 @@ function nodeToElement(node: Content): SlideElement | null {
       const content = node.children
         .map((child) => extractText(child))
         .join('\n');
+      const callout = parseCallout(content);
+      if (callout) return callout;
       return {
         type: 'blockquote',
         content,
       } satisfies BlockquoteElement;
+    }
+
+    case 'html': {
+      const parsed = parseComment(node.value);
+      if (parsed === null) return null;
+      if ('direction' in parsed) return parsed;
+      // Directive comments are collected by the caller — see splitIntoSlides
+      return null;
     }
 
     default:
@@ -171,38 +292,61 @@ function detectLayout(
 
 /**
  * Split remark AST into SlideNode array
+ * @param defaultLayout Optional frontmatter layout; the auto-detection rule
+ *   engine runs first, @(layout=...) directives override it.
  */
-export function splitIntoSlides(tree: Root): SlideNode[] {
+export function splitIntoSlides(tree: Root, defaultLayout?: string): SlideNode[] {
   const slides: SlideNode[] = [];
   let currentTitle: string | undefined;
   let currentSubtitle: string | undefined;
   let currentElements: SlideElement[] = [];
+  let currentDirectives: Record<string, string> = {};
   let currentHeadingLevel = 0;
   let isFirstSlide = true;
 
   function flushSlide(): void {
-    // Don't create empty slides
-    if (!currentTitle && currentElements.length === 0) {
+    // Don't create empty slides (but keep slides that carry directives/notes)
+    if (!currentTitle && currentElements.length === 0 && Object.keys(currentDirectives).length === 0) {
       return;
     }
 
-    const layout = detectLayout(
+    // Apply @(highlight=...) to the slide's code block if not already applied
+    if (currentDirectives.highlight && currentElements.length > 0) {
+      const ranges = parseHighlightRanges(currentDirectives.highlight);
+      if (ranges.length > 0) {
+        const code = currentElements.find(
+          (e): e is CodeElement => e.type === 'code' && !e.highlightLines,
+        );
+        if (code) code.highlightLines = ranges;
+      }
+    }
+
+    const autoLayout = detectLayout(
       currentTitle,
       currentElements,
       isFirstSlide && slides.length === 0,
       currentHeadingLevel,
     );
+    // Precedence: @(layout=...) directive > structural auto-detection
+    // (title/section/code/quote) > frontmatter fallback (only for generic
+    // content slides) > generic content.
+    const layout: SlideLayout = (currentDirectives.layout as SlideLayout | undefined) ??
+      (autoLayout === 'content' ? (defaultLayout as SlideLayout | undefined) : autoLayout) ??
+      'content';
 
     slides.push({
       layout,
       title: currentTitle,
       subtitle: currentSubtitle,
       elements: currentElements,
+      notes: currentDirectives.notes,
+      directives: toDirectives(currentDirectives),
     });
 
     currentTitle = undefined;
     currentSubtitle = undefined;
     currentElements = [];
+    currentDirectives = {};
     currentHeadingLevel = 0;
     isFirstSlide = false;
   }
@@ -222,6 +366,20 @@ export function splitIntoSlides(tree: Root): SlideNode[] {
       flushSlide();
       currentTitle = node.children.map(extractText).join('');
       currentHeadingLevel = node.depth;
+      continue;
+    }
+
+    // Directive comment may precede content in any position — collect it,
+    // but preserve ordering by pushing to elements when it's a break marker.
+    if (node.type === 'html') {
+      const parsed = parseComment(node.value);
+      if (parsed !== null) {
+        if ('direction' in parsed) {
+          currentElements.push(parsed);
+        } else {
+          Object.assign(currentDirectives, parsed.directives);
+        }
+      }
       continue;
     }
 

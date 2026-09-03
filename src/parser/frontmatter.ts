@@ -21,11 +21,17 @@ export function extractFrontmatter(tree: Root): MarkdownFlyConfig {
   }
 
   try {
-    const parsed = parseYaml(yamlNode.value) as Partial<MarkdownFlyConfig>;
-    return {
+    const parsed = parseYaml(yamlNode.value) as Partial<MarkdownFlyConfig> & {
+      resource_dir?: string; // snake_case alias
+    };
+    const merged: MarkdownFlyConfig = {
       ...DEFAULT_CONFIG,
       ...parsed,
     };
+    if (parsed.resource_dir && !merged.resourceDir) {
+      merged.resourceDir = parsed.resource_dir;
+    }
+    return merged;
   } catch {
     console.warn('Failed to parse frontmatter YAML, using defaults');
     return { ...DEFAULT_CONFIG };

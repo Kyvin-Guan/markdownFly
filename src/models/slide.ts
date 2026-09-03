@@ -16,6 +16,31 @@ export type SlideLayout =
   | 'blank'
   | 'closing';
 
+/** A layout marker inside a slide: starts a new row (===) or column (<->) */
+export interface BreakElement {
+  type: 'break';
+  direction: 'row' | 'col';
+}
+
+/** Callout box (> [!NOTE]/[!TIP]/[...]) */
+export interface CalloutElement {
+  type: 'callout';
+  variant: string; // note | tip | warning | caution | danger | success | info
+  /** Custom title from "> [!WARNING] my title"; defaults to variant name */
+  title?: string;
+  content: string;
+}
+
+/** Slide-level directives parsed from @(key=value, ...) */
+export interface SlideDirectives {
+  layout?: string;
+  notes?: string;
+  chart?: string;
+  highlight?: string;
+  background?: string;
+  steps?: boolean;
+}
+
 // --- Slide Elements ---
 
 export interface TextElement {
@@ -35,12 +60,16 @@ export interface ListElement {
   type: 'list';
   items: string[];
   ordered: boolean;
+  /** Parallel to items; present only for task lists (- [x] / - [ ]) */
+  checked?: boolean[];
 }
 
 export interface CodeElement {
   type: 'code';
   content: string;
   language?: string;
+  /** 1-based line numbers to highlight (from @(highlight=...)) */
+  highlightLines?: number[];
 }
 
 export interface ImageElement {
@@ -74,7 +103,9 @@ export type SlideElement =
   | ImageElement
   | TableElement
   | BlockquoteElement
-  | DiagramElement;
+  | DiagramElement
+  | BreakElement
+  | CalloutElement;
 
 /** A single slide in the presentation */
 export interface SlideNode {
@@ -83,7 +114,7 @@ export interface SlideNode {
   subtitle?: string;
   elements: SlideElement[];
   notes?: string;
-  directives?: Record<string, string>;
+  directives?: SlideDirectives;
   metadata?: Record<string, unknown>;
 }
 
