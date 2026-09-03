@@ -12,6 +12,8 @@ export const darkTheme: Theme = {
     codeText: '38BDF8',
     titleBackground: '0F172A',
     titleText: '38BDF8',
+    highlightBackground: '334155',
+    backgroundGradient: { from: '0F172A', to: '1E293B', angle: 135 },
   },
   fonts: {
     heading: 'Segoe UI',

@@ -21,7 +21,7 @@ program
 program
   .argument('<files...>', 'Markdown files to convert (supports glob)')
   .option('-o, --output <path>', 'Output file path (single file only)')
-  .option('-t, --theme <name>', 'Theme name (clean, academic, dark, business, warm)', 'clean')
+  .option('-t, --theme <name>', 'Theme name (clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink)', 'clean')
   .option('--ai', 'Enable AI enhancement')
   .action(async (filePatterns: string[], options: { output?: string; theme: string; ai?: boolean }) => {
     try {

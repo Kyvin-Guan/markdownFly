@@ -10,6 +10,7 @@ import { renderSlideLayout } from './layouts/index.js';
 import { highlightCode } from './code-highlighter.js';
 import { resolveImage } from './image-handler.js';
 import { renderDiagram } from '../diagrams/index.js';
+import { slideBackground } from './background.js';
 
 import { writeFileSync } from 'node:fs';
 
@@ -30,6 +31,7 @@ export async function renderPresentation(
   pptx.title = presentation.slides[0]?.title ?? 'Presentation';
 
   const { resourceDir } = presentation.config;
+  const backgroundProps = slideBackground(theme);
 
   // Build render context
   const ctx = {
@@ -53,8 +55,8 @@ export async function renderPresentation(
     const node = presentation.slides[i];
     const slide = pptx.addSlide();
 
-    // Set default background
-    slide.background = { color: theme.colors.background };
+    // Set default background (flat color or theme gradient image)
+    slide.background = backgroundProps;
 
     ctx.pageNumber = i + 1;
     if (node.layout === 'section' && node.title) {

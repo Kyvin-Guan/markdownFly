@@ -72,10 +72,20 @@ export interface CodeElement {
   highlightLines?: number[];
 }
 
+export type ImageAlign = 'left' | 'center' | 'right';
+
 export interface ImageElement {
   type: 'image';
   src: string;
   alt?: string;
+  /**
+   * Optional size from `![alt](src){w=6in}` — normalized to inches
+   * (e.g. '6in') or percentage of the column (e.g. '60%')
+   */
+  width?: string;
+  height?: string;
+  /** Horizontal alignment inside the column (default 'center') */
+  align?: ImageAlign;
 }
 
 export interface TableElement {

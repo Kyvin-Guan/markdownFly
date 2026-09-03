@@ -19,6 +19,7 @@ import type {
   DiagramElement,
   BreakElement,
   CalloutElement,
+  ImageAlign,
 } from '../models/slide.js';
 
 /** Diagram languages that trigger DiagramElement instead of CodeElement */
@@ -134,6 +135,56 @@ function parseCallout(content: string): CalloutElement | null {
 }
 
 /**
+ * Parse a `{w=6in,h=40mm,align=left}` suffix into image element params.
+ * Keys: w/width, h/height, align. Invalid pieces are silently ignored, so a
+ * `![alt](src){w=200}` line still renders the image.
+ */
+function parseImageParams(text: string): Pick<ImageElement, 'width' | 'height' | 'align'> {
+  const result: Pick<ImageElement, 'width' | 'height' | 'align'> = {};
+  const body = text.replace(/^\{\s*|\s*\}$/g, '');
+  for (const part of body.split(',')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    const key = part.slice(0, eq).trim().toLowerCase();
+    const value = part.slice(eq + 1).trim();
+    switch (key) {
+      case 'w':
+      case 'width': {
+        const normalized = normalizeImageSize(value);
+        if (normalized) result.width = normalized;
+        break;
+      }
+      case 'h':
+      case 'height': {
+        const normalized = normalizeImageSize(value);
+        if (normalized) result.height = normalized;
+        break;
+      }
+      case 'align': {
+        if (value === 'left' || value === 'center' || value === 'right') {
+          result.align = value as ImageAlign;
+        }
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+/** Normalize to '<n>in' or '<n>%'; bare numbers are px (96 dpi). Invalid → undefined. */
+function normalizeImageSize(value: string): string | undefined {
+  const match = value.match(/^(\d+(?:\.\d+)?)(px|pt|cm|mm|in|inch|%)?$/i);
+  if (!match) return undefined;
+  const n = parseFloat(match[1]);
+  if (!(n > 0)) return undefined;
+  const unit = (match[2] || 'px').toLowerCase();
+  if (unit === '%') return `${n}%`;
+  const inches =
+    unit === 'px' ? n / 96 : unit === 'pt' ? n / 72 : unit === 'cm' ? n / 2.54 : unit === 'mm' ? n / 25.4 : n;
+  return `${Math.round(inches * 100) / 100}in`;
+}
+
+/**
  * Convert an mdast content node to a SlideElement
  */
 function nodeToElement(node: Content): SlideElement | null {
@@ -147,14 +198,29 @@ function nodeToElement(node: Content): SlideElement | null {
     }
 
     case 'paragraph': {
-      // Check if paragraph contains only an image
-      if (node.children.length === 1 && node.children[0].type === 'image') {
-        const img = node.children[0];
-        return {
-          type: 'image',
-          src: img.url,
-          alt: img.alt ?? undefined,
-        } satisfies ImageElement;
+      // A paragraph holding exactly one image — optionally followed by a
+      // {w=...,align=...} suffix, which CommonMark parses as a plain text node.
+      const first = node.children[0];
+      if (first?.type === 'image') {
+        const rest = node.children.slice(1);
+        const paramsFromText = (() => {
+          if (rest.length === 0) return {};
+          if (!rest.every((c) => c.type === 'text')) return null;
+          const suffix = rest
+            .map((c) => (c.type === 'text' ? c.value : ''))
+            .join('')
+            .trim();
+          const match = suffix.match(/^\{.*\}$/);
+          return match ? parseImageParams(match[0]) : null;
+        })();
+        if (paramsFromText !== null) {
+          return {
+            type: 'image',
+            src: first.url,
+            alt: first.alt ?? undefined,
+            ...paramsFromText,
+          } satisfies ImageElement;
+        }
       }
       return {
         type: 'text',

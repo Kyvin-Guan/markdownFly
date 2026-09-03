@@ -12,7 +12,7 @@ import type { SlideNode, SlideElement } from '../../models/slide.js';
 import type { Theme } from '../../models/theme.js';
 import type { RenderContext } from './index.js';
 import { getPngSize } from '../../utils/png-size.js';
-import { fitInBox } from '../../utils/image-fit.js';
+import { fitInBox, fitImageWithOptions } from '../../utils/image-fit.js';
 import { tableToChartOption } from '../../utils/table-chart.js';
 import { readFileSync } from 'node:fs';
 
@@ -24,6 +24,17 @@ const CONTENT_W = SLIDE_W - MARGIN * 2;
 const TITLE_H = 0.9;
 const BOTTOM_MARGIN = 0.45;
 const GRID_GAP = 0.25;
+
+/** Extension → MIME map used when embedding images as base64 data */
+const IMAGE_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+};
 
 /** Vertical space available below the title bar */
 function contentAreaInsets(node: SlideNode): { top: number; bottom: number } {
@@ -188,7 +199,14 @@ function estimateColumnHeight(elements: SlideElement[], w: number): number {
       case 'image':
         // Most diagrams are wide (aspect ~1.5-3:1); assume ~2:1 and let the
         // actual render down-scale. Enough height to look deliberate.
-        h += Math.min(4.5, Math.max(1.2, w * 0.5));
+        // Explicit image sizes are honored so a small icon doesn't eat the row.
+        if (el.type === 'image' && el.height && !el.height.endsWith('%')) {
+          h += parseFloat(el.height) + 0.2;
+        } else if (el.type === 'image' && el.width && !el.width.endsWith('%')) {
+          h += parseFloat(el.width) * 0.5 + 0.2;
+        } else {
+          h += Math.min(4.5, Math.max(1.2, w * 0.5));
+        }
         break;
       case 'table':
         h += (el.rows.length + 1) * 0.4;
@@ -385,15 +403,25 @@ async function renderElement(
         if (resolved?.path) {
           const imgSize = getPngSize(readFileSync(resolved.path)) ?? { width: 6, height: 3.0 };
           const boxH = Math.max(1.2, maxH);
-          const fitted = fitInBox(imgSize, w, boxH);
+          const placed = fitImageWithOptions(
+            imgSize,
+            { width: w, height: boxH },
+            { width: element.width, height: element.height, align: element.align },
+          );
+          // Base64 data (not a path): avoids pptxgenjs' Node-vs-browser media
+          // encoding, which crashes under ESM hosts (no `require` → XHR path).
+          const ext = resolved.path.split('.').pop()?.toLowerCase() ?? 'png';
+          const mime = IMAGE_MIME[ext] ?? 'image/png';
+          const data = `${mime};base64,${readFileSync(resolved.path).toString('base64')}`;
           slide.addImage({
-            path: resolved.path,
-            x: x + (w - fitted.width) / 2,
+            data,
+            path: 'preencoded.png',
+            x: x + placed.x,
             y: yPos,
-            w: fitted.width,
-            h: fitted.height,
+            w: placed.width,
+            h: placed.height,
           });
-          return fitted.height + 0.2;
+          return placed.height + 0.2;
         }
       } catch {
         // Skip broken images

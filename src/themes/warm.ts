@@ -11,7 +11,8 @@ export const warmTheme: Theme = {
     codeBackground: '292524',
     codeText: 'FDFBF7',
     titleBackground: '065F46',
-    titleText: 'FDFBF7',
+    titleText: '292524',
+    backgroundGradient: { from: 'FDFBF7', to: 'F5EEDF', angle: 180 },
   },
   fonts: {
     heading: 'Georgia',

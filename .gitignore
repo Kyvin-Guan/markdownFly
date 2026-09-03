@@ -7,3 +7,11 @@ dist/
 
 # Third-party reference themes for design study (not vendored)
 reference-themes/
+
+# IDE / editor
+.idea/
+.zcode/
+
+# Debug scratch artifacts
+scratch-*.png
+scratch-*.svg

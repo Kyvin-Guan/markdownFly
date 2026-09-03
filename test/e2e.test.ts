@@ -19,4 +19,19 @@ describe('E2E Conversion', () => {
     expect(result).toBe(outputPath);
     expect(existsSync(outputPath)).toBe(true);
   });
+
+  it('should convert markdown with sized images to a valid .pptx file', async () => {
+    const imageOutputPath = resolve('test/fixtures/output-images.pptx');
+    if (existsSync(imageOutputPath)) {
+      unlinkSync(imageOutputPath);
+    }
+
+    const result = await convert('test/fixtures/images.md', {
+      output: imageOutputPath,
+      theme: 'clean',
+    });
+
+    expect(result).toBe(imageOutputPath);
+    expect(existsSync(imageOutputPath)).toBe(true);
+  });
 });

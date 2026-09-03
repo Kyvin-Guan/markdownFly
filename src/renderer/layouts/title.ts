@@ -11,15 +11,18 @@ export function renderTitleSlide(
   node: SlideNode,
   theme: Theme,
 ): void {
-  const bgColor = theme.colors.titleBackground ?? theme.colors.primary;
   const textColor = theme.colors.titleText ?? 'FFFFFF';
   const subtitleColor = textColor === 'FFFFFF' ? 'FFFFFFCC' : theme.colors.secondary;
   const metaColor = textColor === 'FFFFFF' ? 'FFFFFF99' : theme.colors.secondary;
 
-  // Background
-  slide.background = { color: bgColor };
-
-  // Title
+  // Gradient themes keep the gradient background on the cover slide too;
+  // flat themes fall back to their solid titleBackground / primary design.
+  const bgColor = theme.colors.backgroundGradient
+    ? undefined
+    : theme.colors.titleBackground ?? theme.colors.primary;
+  if (bgColor) {
+    slide.background = { color: bgColor };
+  }
   if (node.title) {
     slide.addText(node.title, {
       x: 0.8,

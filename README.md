@@ -46,7 +46,7 @@ pnpm link --global
 # Convert a single file (auto-named to slides.pptx)
 mfly slides.md
 
-# Specify theme (clean, academic, dark, business, warm)
+# Specify theme (clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink)
 mfly slides.md -t dark
 
 # Specify custom output path
@@ -83,6 +83,12 @@ mfly config delete OPENAI_API_KEY
 | **`dark`** | Dark mode geek | Dark Slate `#0F172A` / Cyan `#38BDF8` | Developer meetups, terminal & coding decks |
 | **`business`** | Professional corporate | Soft Slate `#F8FAFC` / Deep Navy `#1E3A8A` | Business reviews, executive pitches & reports |
 | **`warm`** | Warm paper / Marp Gaia | Warm Sand `#FDFBF7` / Forest Green `#065F46` | Keynotes, design retrospectives & narratives |
+| **`aurora`** | Dark neon gradient | Deep Navy `#06091C` / Mint-Blue `#7AA2FF` | Product launches, creative & futuristic decks |
+| **`neon`** | High-contrast cyber | Black `#121212` / Cyan `#00E5FF` + Magenta `#FF4081` | Tech demos, cyberpunk-style sharing |
+| **`nord`** | Arctic Frost | Dark `#2E3440` / Frost Blue `#88C0D0` | Cold & calm dev/design decks |
+| **`dracula`** | Dracula dark | Charcoal `#282A36` / Purple `#BD93F9` + Pink `#FF79C6` | Code-heavy dark presentations |
+| **`beige`** | Warm paper minimal | Beige `#F7F3DE` / Bronze `#8B6F3D` + Terracotta `#C0563C` | Editorial, workshop, organics |
+| **`ink`** | Chinese ink-wash | Rice Paper `#F7F4EC` / Ink `#2F3530` + Vermilion `#C0272D` | Culture, humanities, Chinese-style decks |
 
 ---
 
@@ -98,7 +104,7 @@ mfly config delete OPENAI_API_KEY
 
 ```yaml
 ---
-theme: dark # Options: clean, academic, dark, business, warm
+theme: dark # Options: clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink
 author: "Your Name"
 footer: "Confidential - {page} / {total}" # {page}/{total}/{section}/{title}
 resource_dir: ./assets # Base directory for relative image paths
@@ -180,6 +186,20 @@ Supported variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` 
 - [x] Completed item
 - [ ] Upcoming item
 ```
+
+### Images
+
+A standalone image line renders as a slide element (aspect ratio preserved, centered in its column). Paths are resolved relative to the markdown file or `resource_dir`; remote URLs (`http/https`) and base64 data URIs also work.
+
+```markdown
+![架构图](./assets/arch.png){w=6in,align=center}
+![对比图](./assets/compare.jpg){w=60%}
+![logo](./logo.svg){width=120px,height=40mm,align=right}
+```
+
+- Keys: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`)
+- Units: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`, `%` (relative to the column; single value preserves aspect ratio)
+- Invalid params are silently ignored — the image still renders
 
 ### Code Blocks with Syntax Highlighting
 

@@ -4,6 +4,12 @@ import { academicTheme } from './academic.js';
 import { darkTheme } from './dark.js';
 import { businessTheme } from './business.js';
 import { warmTheme } from './warm.js';
+import { auroraTheme } from './aurora.js';
+import { neonTheme } from './neon.js';
+import { nordTheme } from './nord.js';
+import { draculaTheme } from './dracula.js';
+import { beigeTheme } from './beige.js';
+import { inkTheme } from './ink.js';
 import { defaultTheme } from './default.js';
 
 export const themes: Record<string, Theme> = {
@@ -12,6 +18,12 @@ export const themes: Record<string, Theme> = {
   dark: darkTheme,
   business: businessTheme,
   warm: warmTheme,
+  aurora: auroraTheme,
+  neon: neonTheme,
+  nord: nordTheme,
+  dracula: draculaTheme,
+  beige: beigeTheme,
+  ink: inkTheme,
   default: defaultTheme,
 };
 
@@ -33,5 +45,11 @@ export {
   darkTheme,
   businessTheme,
   warmTheme,
+  auroraTheme,
+  neonTheme,
+  nordTheme,
+  draculaTheme,
+  beigeTheme,
+  inkTheme,
   defaultTheme,
 };
