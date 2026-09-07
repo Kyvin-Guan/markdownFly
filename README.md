@@ -1,6 +1,6 @@
 # MarkdownFly (mfly) 🚀
 
-> **AI-powered Markdown to PowerPoint (.pptx) CLI tool designed for developers.**
+> **Markdown to PowerPoint (.pptx) CLI tool designed for developers.**
 > Write in Markdown with syntax-highlighted code and embedded diagrams; generate beautiful, editable slides in seconds.
 
 ---
@@ -16,8 +16,6 @@
 - 🖼️ **Image Embedding**: Local file paths, remote URLs (`http://`/`https://`), and base64 Data URIs.
 - 📐 **Automatic Layout Detection**: Title slides, section dividers, code spotlights, quotes, and content slides.
 - ⚡ **Batch Conversion**: Convert multiple files with glob support (`mfly *.md`).
-- 🤖 **AI-Ready Architecture**: Pluggable AI enhancement pipeline for automated layout advisory, content polishing, and speaker notes.
-- ⚙️ **Config & Key Management**: Secure CLI commands for API keys (`~/.markdownfly/config.json`).
 
 ---
 
@@ -40,7 +38,7 @@ pnpm link --global
 
 ## 🚀 Quick Start
 
-### 1. Basic Usage
+### Basic Usage
 
 ```bash
 # Convert a single file (auto-named to slides.pptx)
@@ -54,22 +52,6 @@ mfly slides.md -t academic -o presentation.pptx
 
 # Batch convert multiple Markdown files
 mfly docs/*.md
-```
-
-### 2. Configuration & API Keys
-
-```bash
-# Set OpenAI API key for AI features
-mfly config set OPENAI_API_KEY sk-your-key-here
-
-# View masked API key
-mfly config get OPENAI_API_KEY
-
-# List all configurations
-mfly config list
-
-# Remove configuration
-mfly config delete OPENAI_API_KEY
 ```
 
 ---

@@ -1,7 +1,7 @@
 {
   "name": "markdownfly",
   "version": "0.1.0",
-  "description": "AI-powered Markdown to PPT CLI tool",
+  "description": "Markdown to PowerPoint (.pptx) CLI tool",
   "type": "module",
   "bin": {
     "mfly": "./dist/cli.js"
@@ -24,7 +24,6 @@
     "pptx",
     "powerpoint",
     "slides",
-    "ai",
     "cli",
     "mermaid",
     "graphviz",

@@ -8,13 +8,11 @@ import { resolve } from 'node:path';
 import { parseMarkdown } from './parser/index.js';
 import { renderPresentation } from './renderer/index.js';
 import { getTheme } from './themes/index.js';
-import { enhanceWithAI } from './ai/index.js';
 import { getOutputPath } from './utils/output-namer.js';
 
 export interface ConvertOptions {
   output?: string;
   theme?: string;
-  ai?: boolean;
 }
 
 /**
@@ -30,19 +28,9 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
 
   // Merge CLI options into config
   if (options.theme) presentation.config.theme = options.theme;
-  if (options.ai !== undefined) presentation.config.ai = options.ai;
 
   // Get theme
   const theme = getTheme(presentation.config.theme);
-
-  // AI enhancement (Phase 2 — currently pass-through)
-  if (presentation.config.ai) {
-    presentation.slides = await enhanceWithAI(presentation.slides, theme, {
-      layout: presentation.config.aiLayout,
-      polish: presentation.config.aiPolish,
-      notes: presentation.config.aiNotes,
-    });
-  }
 
   // Determine output path
   const outputPath = resolve(getOutputPath(absInput, options.output));
