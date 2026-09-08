@@ -7,6 +7,7 @@ import type { Root } from 'mdast';
 import { parse as parseYaml } from 'yaml';
 import type { MarkdownFlyConfig } from '../config/types.js';
 import { DEFAULT_CONFIG } from '../config/defaults.js';
+import { log } from '../utils/progress.js';
 
 /**
  * Extract and parse frontmatter from remark AST
@@ -24,16 +25,17 @@ export function extractFrontmatter(tree: Root): MarkdownFlyConfig {
     const parsed = parseYaml(yamlNode.value) as Partial<MarkdownFlyConfig> & {
       resource_dir?: string; // snake_case alias
     };
+    const { resource_dir, ...parsedOnly } = parsed;
     const merged: MarkdownFlyConfig = {
       ...DEFAULT_CONFIG,
-      ...parsed,
+      ...parsedOnly,
     };
-    if (parsed.resource_dir && !merged.resourceDir) {
-      merged.resourceDir = parsed.resource_dir;
+    if (resource_dir && !merged.resourceDir) {
+      merged.resourceDir = resource_dir;
     }
     return merged;
   } catch {
-    console.warn('Failed to parse frontmatter YAML, using defaults');
+    log.warn('Failed to parse frontmatter YAML, using defaults');
     return { ...DEFAULT_CONFIG };
   }
 }

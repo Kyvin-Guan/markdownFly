@@ -6,6 +6,8 @@
 import PptxGenJS from 'pptxgenjs';
 import type { SlideNode } from '../../models/slide.js';
 import type { Theme } from '../../models/theme.js';
+import type { ImageResolution } from '../image-handler.js';
+import { log } from '../../utils/progress.js';
 import { renderTitleSlide } from './title.js';
 import { renderSectionSlide } from './section.js';
 import { renderContentSlide } from './content.js';
@@ -15,7 +17,7 @@ import { renderQuoteSlide } from './quote.js';
 /** Context passed to layout renderers for async operations */
 export interface RenderContext {
   highlightCode: (code: string, language: string, highlightLines?: number[]) => Promise<PptxGenJS.TextProps[]>;
-  resolveImage: (src: string) => Promise<{ path?: string; data?: string } | null>;
+  resolveImage: (src: string) => Promise<ImageResolution>;
   renderDiagram: (diagramType: string, code: string) => Promise<Buffer>;
   /** Page footer template with {page}/{total}/{section}/{title} placeholders */
   footerTemplate?: string;
@@ -37,10 +39,12 @@ export async function renderSlideLayout(
   // @(background=...) overrides the slide's background (image or theme color)
   if (node.directives?.background) {
     const resolved = await ctx.resolveImage(node.directives.background);
-    if (resolved?.path) {
+    if (resolved.ok && resolved.path) {
       slide.background = { path: resolved.path };
     } else if (node.directives.background.startsWith('#')) {
       slide.background = { color: node.directives.background.replace(/^#/, '') };
+    } else if (!resolved.ok) {
+      log.warn(`[${node.title ?? 'slide'}] ${resolved.error}`);
     }
   }
 

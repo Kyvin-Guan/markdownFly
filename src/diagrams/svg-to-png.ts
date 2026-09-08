@@ -1,8 +1,6 @@
 /**
- * SVG to PNG conversion using @resvg/resvg-js (WASM)
+ * SVG to PNG conversion using @resvg/resvg-js (native N-API binding)
  */
-
-import { Resvg } from '@resvg/resvg-js';
 
 /**
  * Normalize SVG string to guarantee valid dimensions and viewBox for Resvg
@@ -42,9 +40,12 @@ function normalizeSvg(svg: string): string {
 
 /**
  * Convert SVG string to PNG Buffer
+ * @resvg/resvg-js is a native addon — loaded lazily so that runs without
+ * diagrams (or on platforms lacking the prebuilt binary) never touch it.
  */
 export async function svgToPng(svg: string, width: number = 800): Promise<Buffer> {
   const normalized = normalizeSvg(svg);
+  const { Resvg } = await import('@resvg/resvg-js');
   const resvg = new Resvg(normalized, {
     fitTo: { mode: 'width' as const, value: width },
   });

@@ -13,6 +13,7 @@ import { renderDiagram } from '../diagrams/index.js';
 import { slideBackground } from './background.js';
 
 import { writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
 /**
  * Render a Presentation to a .pptx file
@@ -31,6 +32,11 @@ export async function renderPresentation(
   pptx.title = presentation.slides[0]?.title ?? 'Presentation';
 
   const { resourceDir } = presentation.config;
+  // Frontmatter resource_dir: relative paths are relative to the source file,
+  // not the process cwd (agents may run from anywhere). basePath is a directory.
+  const resourceBase = resourceDir
+    ? resolve(dirname(inputPath), resourceDir)
+    : dirname(inputPath);
   const backgroundProps = slideBackground(theme);
 
   // Build render context
@@ -39,7 +45,7 @@ export async function renderPresentation(
       return highlightCode(code, language, theme, highlightLines) as unknown as Promise<PptxGenJS.TextProps[]>;
     },
     resolveImage: async (src: string) => {
-      return resolveImage(src, resourceDir || inputPath);
+      return resolveImage(src, resourceBase);
     },
     renderDiagram: async (diagramType: string, code: string) => {
       return renderDiagram(diagramType, code, theme);

@@ -31,6 +31,9 @@ export function getTheme(name?: string): Theme {
   if (!name) {
     return cleanTheme;
   }
+  if (typeof name !== 'string') {
+    throw new Error(`Invalid theme value: expected a string, got ${typeof name}`);
+  }
   const theme = themes[name.toLowerCase()];
   if (!theme) {
     console.warn(`Theme "${name}" not found, using "clean"`);

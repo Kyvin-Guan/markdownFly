@@ -3,20 +3,27 @@
  * Resolves and downloads images for embedding in PPTX
  */
 
-import { existsSync, writeFileSync, readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { existsSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
+/** Outcome of resolving an image source. Failure carries a human-readable reason. */
+export type ImageResolution =
+  | { ok: true; path: string }
+  | { ok: false; error: string };
+
+const REMOTE_FETCH_TIMEOUT_MS = 10_000;
+
 /**
  * Resolve an image source to a local file path or base64 data
- * Returns { path } for local files, { data, type } for downloaded/base64
+ * Never throws — failures are returned as { ok: false, error }.
  */
 export async function resolveImage(
   src: string,
   basePath: string,
-): Promise<{ path?: string; data?: string } | null> {
+): Promise<ImageResolution> {
   try {
     // data: URI
     if (src.startsWith('data:')) {
@@ -26,31 +33,45 @@ export async function resolveImage(
         const base64 = match[2];
         const tmpPath = join(tmpdir(), `mfly-${randomUUID().slice(0, 8)}.${ext}`);
         writeFileSync(tmpPath, Buffer.from(base64, 'base64'));
-        return { path: tmpPath };
+        return { ok: true, path: tmpPath };
       }
-      return null;
+      return { ok: false, error: `Unsupported data URI: ${src.slice(0, 48)}` };
     }
 
     // URL (http/https)
     if (src.startsWith('http://') || src.startsWith('https://')) {
-      const response = await fetch(src);
-      if (!response.ok) return null;
+      let response: Response;
+      try {
+        response = await fetch(src, { signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS) });
+      } catch (err) {
+        const name = err instanceof Error ? err.name : '';
+        const reason = name === 'TimeoutError' || name === 'AbortError'
+          ? `request timed out after ${REMOTE_FETCH_TIMEOUT_MS / 1000}s`
+          : err instanceof Error ? err.message : String(err);
+        return { ok: false, error: `Failed to fetch ${src}: ${reason}` };
+      }
+      if (!response.ok) {
+        return { ok: false, error: `Failed to fetch ${src}: HTTP ${response.status}` };
+      }
 
       const buffer = Buffer.from(await response.arrayBuffer());
       const ext = src.split('.').pop()?.split('?')[0] ?? 'png';
       const tmpPath = join(tmpdir(), `mfly-${randomUUID().slice(0, 8)}.${ext}`);
       writeFileSync(tmpPath, buffer);
-      return { path: tmpPath };
+      return { ok: true, path: tmpPath };
     }
 
-    // Local file path
-    const absolutePath = resolve(dirname(basePath), src);
+    // Local file path (basePath is always a directory)
+    const absolutePath = resolve(basePath, src);
     if (existsSync(absolutePath)) {
-      return { path: absolutePath };
+      return { ok: true, path: absolutePath };
     }
 
-    return null;
-  } catch {
-    return null;
+    return { ok: false, error: `Image not found: ${src} (resolved to ${absolutePath})` };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }

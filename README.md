@@ -21,6 +21,18 @@
 
 ## 📦 Installation
 
+Requires Node.js 20+.
+
+```bash
+# Install globally from npm (preferred)
+npm install -g markdownfly
+
+# Or run without installing
+npx markdownfly@latest slides.md
+```
+
+Develop from source:
+
 ```bash
 # Clone and install dependencies
 git clone https://github.com/markdownfly/markdownfly.git
@@ -41,7 +53,7 @@ pnpm link --global
 ### Basic Usage
 
 ```bash
-# Convert a single file (auto-named to slides.pptx)
+# Convert a single file (named after the input: slides.md → slides.pptx)
 mfly slides.md
 
 # Specify theme (clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink)
@@ -53,6 +65,29 @@ mfly slides.md -t academic -o presentation.pptx
 # Batch convert multiple Markdown files
 mfly docs/*.md
 ```
+
+If the default output name already exists, a timestamped name is used
+(`slides-20260907-131500.pptx`) instead of overwriting. With `-o` the target
+is overwritten without prompting.
+
+### Automation (`--quiet` / `--json`)
+
+```bash
+# Machine-readable result (one JSON line on stdout; diagnostics on stderr)
+mfly slides.md --json
+
+# Suppress per-file progress lines
+mfly docs/*.md --quiet
+```
+
+- `--json` prints a single JSON object to stdout:
+  `{"ok":true,"durationMs":1234,"files":[{"input":"slides.md","output":"C:/abs/slides.pptx","ok":true}]}`.
+  Per-file failures set `ok:false` with an `error` field.
+- Exit code is `0` only when **every** file converts successfully; if any file
+  fails the process exits `1` (a summary line is printed to stderr).
+- `-t` with an unknown theme name fails with exit `1` (theme names in markdown
+  frontmatter fall back to `clean` with a warning).
+- Progress lines go to stderr; errors and warnings always go to stderr.
 
 ---
 
@@ -171,7 +206,7 @@ Supported variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` 
 
 ### Images
 
-A standalone image line renders as a slide element (aspect ratio preserved, centered in its column). Paths are resolved relative to the markdown file or `resource_dir`; remote URLs (`http/https`) and base64 data URIs also work.
+A standalone image line renders as a slide element (aspect ratio preserved, centered in its column). Paths are resolved relative to the markdown file, or relative to `resource_dir` (which itself is resolved relative to the markdown file, never the current working directory); remote URLs (`http/https`) and base64 data URIs also work. A missing or failed image is skipped with a warning on stderr — the deck is still generated.
 
 ```markdown
 ![架构图](./assets/arch.png){w=6in,align=center}
@@ -182,6 +217,7 @@ A standalone image line renders as a slide element (aspect ratio preserved, cent
 - Keys: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`)
 - Units: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`, `%` (relative to the column; single value preserves aspect ratio)
 - Invalid params are silently ignored — the image still renders
+- ⚠ Security: image paths (`![](...)` and `@(background=...)`) are resolved without restrictions — only convert markdown you own or trust.
 
 ### Code Blocks with Syntax Highlighting
 

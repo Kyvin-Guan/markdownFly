@@ -14,6 +14,7 @@ import type { RenderContext } from './index.js';
 import { getPngSize } from '../../utils/png-size.js';
 import { fitInBox, fitImageWithOptions } from '../../utils/image-fit.js';
 import { tableToChartOption } from '../../utils/table-chart.js';
+import { log } from '../../utils/progress.js';
 import { readFileSync } from 'node:fs';
 
 // Slide dimensions (16:9 LAYOUT_WIDE)
@@ -400,31 +401,35 @@ async function renderElement(
     case 'image': {
       try {
         const resolved = await ctx.resolveImage(element.src);
-        if (resolved?.path) {
-          const imgSize = getPngSize(readFileSync(resolved.path)) ?? { width: 6, height: 3.0 };
-          const boxH = Math.max(1.2, maxH);
-          const placed = fitImageWithOptions(
-            imgSize,
-            { width: w, height: boxH },
-            { width: element.width, height: element.height, align: element.align },
-          );
-          // Base64 data (not a path): avoids pptxgenjs' Node-vs-browser media
-          // encoding, which crashes under ESM hosts (no `require` → XHR path).
-          const ext = resolved.path.split('.').pop()?.toLowerCase() ?? 'png';
-          const mime = IMAGE_MIME[ext] ?? 'image/png';
-          const data = `${mime};base64,${readFileSync(resolved.path).toString('base64')}`;
-          slide.addImage({
-            data,
-            path: 'preencoded.png',
-            x: x + placed.x,
-            y: yPos,
-            w: placed.width,
-            h: placed.height,
-          });
-          return placed.height + 0.2;
+        if (!resolved.ok) {
+          log.warn(`[${node.title ?? 'slide'}] ${resolved.error}`);
+          return 0;
         }
-      } catch {
-        // Skip broken images
+        const imgSize = getPngSize(readFileSync(resolved.path)) ?? { width: 6, height: 3.0 };
+        const boxH = Math.max(1.2, maxH);
+        const placed = fitImageWithOptions(
+          imgSize,
+          { width: w, height: boxH },
+          { width: element.width, height: element.height, align: element.align },
+        );
+        // Base64 data (not a path): avoids pptxgenjs' Node-vs-browser media
+        // encoding, which crashes under ESM hosts (no `require` → XHR path).
+        const ext = resolved.path.split('.').pop()?.toLowerCase() ?? 'png';
+        const mime = IMAGE_MIME[ext] ?? 'image/png';
+        const data = `${mime};base64,${readFileSync(resolved.path).toString('base64')}`;
+        slide.addImage({
+          data,
+          path: 'preencoded.png',
+          x: x + placed.x,
+          y: yPos,
+          w: placed.width,
+          h: placed.height,
+        });
+        return placed.height + 0.2;
+      } catch (err) {
+        log.warn(
+          `Failed to embed image ${element.src}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
       return 0;
     }

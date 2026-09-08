@@ -8,13 +8,30 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "pretest": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "tsup"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markdownfly/markdownfly.git"
+  },
+  "homepage": "https://github.com/markdownfly/markdownfly",
+  "author": "Kyvin-Guan",
   "engines": {
     "node": ">=20"
   },
