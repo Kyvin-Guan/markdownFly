@@ -28,9 +28,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/markdownfly/markdownfly.git"
+    "url": "git+https://github.com/Kyvin-Guan/markdownFly.git"
   },
-  "homepage": "https://github.com/markdownfly/markdownfly",
+  "homepage": "https://github.com/Kyvin-Guan/markdownFly",
   "author": "Kyvin-Guan",
   "engines": {
     "node": ">=20"

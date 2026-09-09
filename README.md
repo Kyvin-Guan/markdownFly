@@ -35,7 +35,7 @@ Develop from source:
 
 ```bash
 # Clone and install dependencies
-git clone https://github.com/markdownfly/markdownfly.git
+git clone https://github.com/Kyvin-Guan/markdownFly.git
 cd markdownFly
 pnpm install
 pnpm build
