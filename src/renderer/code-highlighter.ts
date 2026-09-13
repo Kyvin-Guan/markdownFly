@@ -5,6 +5,7 @@
 
 import { createHighlighter, type Highlighter } from 'shiki';
 import type { Theme } from '../models/theme.js';
+import { hexToRgb } from '../utils/gradient.js';
 
 interface PptxTextRun {
   text: string;
@@ -42,6 +43,32 @@ function cleanColor(color: string | undefined): string {
   return color.replace(/^#/, '');
 }
 
+/** Mix a hex colour toward white. */
+function tint(hex: string, amount: number): string {
+  const mix = (channel: number): string =>
+    Math.round(channel + (255 - channel) * amount)
+      .toString(16)
+      .padStart(2, '0');
+  const [r, g, b] = hexToRgb(hex);
+  return `${mix(r)}${mix(g)}${mix(b)}`;
+}
+
+/**
+ * Colour of the band drawn behind a highlighted line.
+ *
+ * The tokens on that band come from Shiki's dark theme, so they are light: the
+ * band has to be dark for them to stay legible. A theme may name its own band,
+ * but one picked for a light surface (or no value at all) produced pale-on-pale
+ * text — the highlight was effectively unreadable in most themes. A missing
+ * value is therefore derived from the code background rather than defaulted to
+ * a light colour.
+ */
+export function highlightBackgroundFor(theme: Theme): string {
+  const explicit = theme.colors.highlightBackground;
+  if (explicit) return explicit;
+  return tint(theme.colors.codeBackground, 0.25);
+}
+
 /**
  * Highlight code and return pptxgenjs text runs
  * @param highlightLines 1-based line numbers drawn with a highlight background
@@ -55,7 +82,7 @@ export async function highlightCode(
   const highlighter = await getHighlighter();
   const runs: PptxTextRun[] = [];
   const shikiThemeName = theme.shikiTheme ?? 'github-dark';
-  const highlightColor = theme.colors.highlightBackground ?? 'FFF3C4';
+  const highlightColor = highlightBackgroundFor(theme);
 
   try {
     // Load language if not already loaded

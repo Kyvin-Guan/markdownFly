@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { highlightBackgroundFor } from '../src/renderer/code-highlighter.js';
 import {
   getTheme,
   themes,
@@ -134,3 +135,20 @@ function isDark(hex: string): boolean {
   const b = parseInt(hex.slice(4, 6), 16);
   return 0.299 * r + 0.587 * g + 0.114 * b < 128;
 }
+
+describe('code highlight colour', () => {
+  it('gives every theme a band that the light code tokens can sit on', () => {
+    // Tokens come from Shiki's dark theme, so they are light; a band picked for
+    // a light surface made the highlighted line unreadable — pale yellow under
+    // light grey text in 7 of the 11 themes before this was derived instead.
+    for (const [name, theme] of Object.entries(themes)) {
+      const band = highlightBackgroundFor(theme).replace(/^#/, '');
+      expect(isDark(band), `${name}: highlight band #${band} is too light`).toBe(true);
+    }
+  });
+
+  it('keeps a band a theme names explicitly', () => {
+    // dracula picks its own; deriving must not override a deliberate choice.
+    expect(highlightBackgroundFor(themes.dracula)).toBe('44475A');
+  });
+});

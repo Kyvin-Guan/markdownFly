@@ -120,7 +120,7 @@ export async function renderContentSlide(
   const ests = grid.map((columns) =>
     Math.max(
       0.8,
-      ...columns.map((c) => estimateColumnHeight(c, (CONTENT_W - GRID_GAP * (columns.length - 1)) / columns.length)),
+      ...columns.map((c) => estimateColumnHeight(c, (CONTENT_W - GRID_GAP * (columns.length - 1)) / columns.length, theme)),
     ),
   );
   const totalEst = ests.reduce((a, b) => a + b, 0);
@@ -173,19 +173,58 @@ function prepareElements(node: SlideNode): SlideElement[] {
   return elements;
 }
 
+/** Text-box insets on a code block (margin: [8, 12, 8, 12], in points). */
+const CODE_INSET_IN = 16 / 72;
+
+/**
+ * PowerPoint lays a line out at roughly 1.2-1.25x its font size; rounding up
+ * keeps the box slightly taller than the text rather than clipping it.
+ */
+const CODE_LINE_FACTOR = 1.3;
+
+/**
+ * Height a code block needs, in inches.
+ *
+ * The insets matter: they are 16pt of the total, which a bare lines x per-line
+ * estimate misses — that is what left the last line of a block sticking out
+ * below the dark fill.
+ */
+function codeBlockHeight(lines: number, fontSizePt: number): number {
+  return Math.max(1.0, (lines * fontSizePt * CODE_LINE_FACTOR) / 72 + CODE_INSET_IN);
+}
+
+/** Display width of a string in Latin-equivalent units (CJK takes two). */
+function displayWidth(text: string): number {
+  let units = 0;
+  for (const char of text) {
+    units += (char.codePointAt(0) ?? 0) > 0x2e80 ? 2 : 1;
+  }
+  return units;
+}
+
+/**
+ * Characters that fit on one line of `fontSizePt` text in a column `widthIn`
+ * inches wide. Average advance is about half an em for Latin, so a 12in column
+ * of 18pt text holds roughly 97 units — the previous estimate assumed 60 per
+ * inch, ~7x too many, which made every paragraph look like a single line and
+ * let the next element overlap it.
+ */
+function charsPerLine(widthIn: number, fontSizePt: number): number {
+  return Math.max(8, Math.floor((widthIn * 72) / (fontSizePt * 0.5)));
+}
+
 /** Estimate wrapped text lines for a string in a column of width w (inches). */
-function estimateTextLines(content: string, w: number): number {
-  const charsPerLine = Math.max(20, Math.floor(w * 60));
-  return Math.max(1, Math.ceil(content.length / charsPerLine));
+function estimateTextLines(content: string, w: number, fontSizePt: number): number {
+  return Math.max(1, Math.ceil(displayWidth(content) / charsPerLine(w, fontSizePt)));
 }
 
 /** Cheap height estimate for a column of elements (inches). */
-function estimateColumnHeight(elements: SlideElement[], w: number): number {
+function estimateColumnHeight(elements: SlideElement[], w: number, theme: Theme): number {
   let h = 0;
   for (const el of elements) {
     switch (el.type) {
       case 'text':
-        h += Math.max(0.5, Math.ceil(el.content.length / Math.max(20, Math.floor(w * 60))) * 0.35);
+        h += Math.max(0.5, estimateTextLines(el.content, w, theme.fontSize.body) * 0.35);
         break;
       case 'heading':
         h += 0.7;
@@ -194,7 +233,7 @@ function estimateColumnHeight(elements: SlideElement[], w: number): number {
         h += el.items.length * 0.5;
         break;
       case 'code':
-        h += Math.max(1.0, el.content.split('\n').length * 0.25);
+        h += codeBlockHeight(el.content.split('\n').length, theme.fontSize.code);
         break;
       case 'diagram':
       case 'image':
@@ -214,7 +253,7 @@ function estimateColumnHeight(elements: SlideElement[], w: number): number {
         break;
       case 'callout':
         // Same adaptive sizing as the renderer: label row + one line per wrap
-        h += Math.min(4.5, 0.72 + estimateTextLines(el.content, w) * 0.3);
+        h += Math.min(4.5, 0.72 + estimateTextLines(el.content, w, theme.fontSize.body) * 0.3);
         break;
       case 'blockquote':
         h += 1.0;
@@ -246,7 +285,7 @@ async function renderColumn(
 ): Promise<void> {
   // Vertically center content that is shorter than its grid cell — a
   // two-line column next to a diagram shouldn't hug the row's top edge.
-  const est = estimateColumnHeight(elements, box.w);
+  const est = estimateColumnHeight(elements, box.w, theme);
   const yPos = box.h > est ? box.y + (box.h - est) / 2 : box.y;
   let cursor = yPos;
   for (const element of elements) {
@@ -270,11 +309,15 @@ async function renderElement(
   switch (element.type) {
     case 'text': {
       if (!element.content.trim()) return 0;
+      // Size the box and advance the cursor by the same estimate, so whatever
+      // follows cannot land on top of a line that wrapped further than assumed.
+      const lines = estimateTextLines(element.content, w, theme.fontSize.body);
+      const height = Math.max(0.5, lines * 0.35);
       slide.addText(element.content, {
         x,
         y: yPos,
         w,
-        h: 0.6,
+        h: height,
         fontSize: theme.fontSize.body,
         fontFace: theme.fonts.body,
         color: theme.colors.text,
@@ -283,10 +326,7 @@ async function renderElement(
         valign: 'top',
         wrap: true,
       });
-      // Rough estimate: ~0.5 inch per 80 chars (scaled to column width)
-      const charsPerLine = Math.max(20, Math.floor(w * 60));
-      const lines = Math.ceil(element.content.length / charsPerLine);
-      return Math.max(0.5, lines * 0.35);
+      return height;
     }
 
     case 'heading': {
@@ -349,7 +389,7 @@ async function renderElement(
         element.highlightLines,
       );
       const lines = element.content.split('\n').length;
-      const height = Math.min(maxH, Math.max(1.0, lines * 0.25));
+      const height = Math.min(maxH, codeBlockHeight(lines, theme.fontSize.code));
 
       slide.addText(runs, {
         x,
@@ -539,7 +579,7 @@ async function renderElement(
       const label = element.title ?? element.variant.toUpperCase();
 
       // Card height adapts to content: label row + one line per wrapped line
-      const textLines = estimateTextLines(element.content, w);
+      const textLines = estimateTextLines(element.content, w, theme.fontSize.body);
       const cardH = Math.min(maxH, 0.72 + textLines * 0.3);
       const textH = cardH - 0.44;
 

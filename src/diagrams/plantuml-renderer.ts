@@ -91,6 +91,37 @@ function fontValue(theme: Theme): string {
   return `"${theme.fonts.cjk.replace(/"/g, '')}"`;
 }
 
+/**
+ * Styling the engine omits from bare `<line>` elements, taken from what the
+ * reference PlantUML server emits for the same diagrams.
+ */
+const LINE_STROKE = 'stroke:#181818;stroke-width:0.5;';
+
+/** Sequence lifelines are dashed on top of the base stroke. */
+const LIFELINE_STROKE = `${LINE_STROKE}stroke-dasharray:5,5;`;
+
+/**
+ * Give bare `<line>` elements their stroke back.
+ *
+ * The TeaVM-compiled engine emits line geometry but drops the styling:
+ * `<line x1="22" y1="79" x2="22" y2="205"/>` with no `stroke` or `style`, no
+ * class, no `<style>` block and no styled ancestor. Per SVG that means
+ * `stroke: none`, so every renderer draws nothing. Two visible casualties:
+ * sequence lifelines, which left the participants floating with nothing between
+ * them, and the compartment dividers of a class diagram.
+ *
+ * The geometry is intact, so the styling is restored from the reference
+ * server's output — a 0.5pt solid stroke, dashed for sequence lifelines.
+ */
+function restoreLineStrokes(svg: string, diagramType: string | undefined): string {
+  const dashed = /sequence/i.test(diagramType ?? '');
+  return svg.replace(/<line\b([^>]*?)\/>/g, (match, attributes: string) =>
+    /\b(stroke|style)=/.test(attributes)
+      ? match
+      : `<line${attributes} style="${dashed ? LIFELINE_STROKE : LINE_STROKE}"/>`,
+  );
+}
+
 export class PlantUmlDiagramRenderer implements DiagramRenderer {
   readonly type = 'plantuml';
   private engine: Engine | null = null;
@@ -235,7 +266,7 @@ export class PlantUmlDiagramRenderer implements DiagramRenderer {
         const at = line ? ` (line ${line})` : '';
         throw new Error(`${result.errorMessage ?? 'invalid diagram'}${at}`);
       }
-      return svgToPng(result.svg, RENDER_WIDTH);
+      return svgToPng(restoreLineStrokes(result.svg, result.diagramType), RENDER_WIDTH);
     } catch (err) {
       throw new Error(
         `PlantUML render failed: ${err instanceof Error ? err.message : String(err)}`,

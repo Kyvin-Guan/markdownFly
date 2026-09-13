@@ -16,7 +16,6 @@ export const inkTheme: Theme = {
     codeText: 'D8D2C0',
     titleBackground: '30352F',
     titleText: '262626',
-    highlightBackground: 'EBDDCD',
     backgroundGradient: { from: 'F7F4EC', to: 'EFE8DA', angle: 180 },
   },
   fonts: {

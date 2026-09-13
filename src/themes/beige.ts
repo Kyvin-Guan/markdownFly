@@ -16,7 +16,6 @@ export const beigeTheme: Theme = {
     codeText: 'E8E0CC',
     titleBackground: '8B6F3D',
     titleText: '2F2A1F',
-    highlightBackground: 'F0E2B8',
     backgroundGradient: { from: 'F7F3DE', to: 'F1E8D2', angle: 180 },
   },
   fonts: {

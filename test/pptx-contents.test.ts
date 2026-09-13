@@ -156,6 +156,15 @@ async function slideXml(pptxPath: string, slide = 1): Promise<string> {
   return zip.file(`ppt/slides/slide${slide}.xml`)!.async('string');
 }
 
+/** Every slide's XML concatenated, so assertions need not know the numbering. */
+async function allSlideXml(pptxPath: string): Promise<string> {
+  const zip = await JSZip.loadAsync(readFileSync(pptxPath));
+  const names = Object.keys(zip.files)
+    .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+    .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]));
+  return (await Promise.all(names.map((name) => zip.file(name)!.async('string')))).join('\n');
+}
+
 /** Every slide's relationship XML concatenated, whatever slide the media is on. */
 async function allSlideRels(pptxPath: string): Promise<string> {
   const zip = await JSZip.loadAsync(readFileSync(pptxPath));
@@ -165,6 +174,33 @@ async function allSlideRels(pptxPath: string): Promise<string> {
       .map((name) => zip.file(name)!.async('string')),
   );
   return parts.join('\n');
+}
+
+const EMU_PER_INCH = 914400;
+
+/** Position/size (inches) of every shape filled with a given hex colour. */
+function shapesFilledWith(
+  slideXml: string,
+  hex: string,
+): Array<{ y: number; height: number }> {
+  return [...slideXml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)]
+    .filter((shape) => shape[0].includes(`srgbClr val="${hex}"`))
+    .map((shape) => {
+      const off = shape[0].match(/<a:off x="-?\d+" y="(-?\d+)"/);
+      const ext = shape[0].match(/<a:ext cx="\d+" cy="(\d+)"/);
+      return {
+        y: off ? Number(off[1]) / EMU_PER_INCH : NaN,
+        height: ext ? Number(ext[1]) / EMU_PER_INCH : NaN,
+      };
+    });
+}
+
+/** Position (inches) of every picture on a slide, top to bottom. */
+function pictures(slideXml: string): Array<{ y: number }> {
+  return [...slideXml.matchAll(/<p:pic>[\s\S]*?<\/p:pic>/g)].map((pic) => {
+    const off = pic[0].match(/<a:off x="-?\d+" y="(-?\d+)"/);
+    return { y: off ? Number(off[1]) / EMU_PER_INCH : NaN };
+  });
 }
 
 // An icon authored the usual way: a padded viewBox so the glyph keeps optical
@@ -282,5 +318,60 @@ describe('author SVGs are rasterized for embedding', () => {
     } finally {
       warn.mockRestore();
     }
+  }, 120000);
+});
+
+/**
+ * Both of these come from height estimates in src/renderer/layouts/content.ts:
+ * a block whose dark fill stopped short of its last line, and a paragraph that
+ * wrapped onto more lines than assumed, so the next element landed on top of it.
+ */
+describe('element heights fit their content', () => {
+  it('sizes a code block to cover every line', async () => {
+    const code = ['mfly <files...>', '', '  -o, --output <path>', '  -t, --theme <name>', '  --quiet', '  --json'].join('\n');
+    writeFileSync(
+      join(tmpDir, 'code.md'),
+      `# Deck\n\n## 命令行\n\n\`\`\`bash\n${code}\n\`\`\`\n`,
+    );
+
+    const out = join(tmpDir, 'code.pptx');
+    await convert(join(tmpDir, 'code.md'), { output: out, theme: 'clean' });
+
+    // clean's codeBackground — the dark fill the lines have to fit inside.
+    const blocks = shapesFilledWith(await allSlideXml(out), '1E293B');
+    expect(blocks).toHaveLength(1);
+
+    // 6 lines at 14pt: 6 * 14 * 1.3 / 72 = 1.52in of text, plus 16pt insets.
+    expect(blocks[0].height).toBeGreaterThanOrEqual(1.6);
+  }, 120000);
+
+  it('does not let an image land on a wrapped paragraph', async () => {
+    // 103 display units in a 12in column: two lines at 18pt, not the one the
+    // old estimate assumed.
+    const paragraph =
+      'w/width、h/height、align 三个键,支持 px(默认)、pt、cm、mm、in、%。只给一个方向时,另一边按原图比例推导。';
+    copyFileSync(fixturePng, join(tmpDir, 'overlap.png'));
+    writeFileSync(
+      join(tmpDir, 'overlap.md'),
+      `# Deck\n\n## 尺寸与对齐\n\n${paragraph}\n\n![图](./overlap.png){w=40%,align=left}\n`,
+    );
+
+    const out = join(tmpDir, 'overlap.pptx');
+    await convert(join(tmpDir, 'overlap.md'), { output: out, theme: 'clean' });
+
+    const xml = await allSlideXml(out);
+    const picture = pictures(xml);
+    expect(picture).toHaveLength(1);
+
+    // The paragraph's own box, located by its text.
+    const textBox = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].find((sp) =>
+      sp[0].includes('align'),
+    );
+    expect(textBox, 'paragraph shape should be present').toBeDefined();
+    const off = textBox![0].match(/<a:off x="-?\d+" y="(-?\d+)"/);
+    const textY = Number(off![1]) / EMU_PER_INCH;
+
+    // Two lines of 18pt text occupy ~0.7in; the image must clear that.
+    expect(picture[0].y - textY).toBeGreaterThanOrEqual(0.6);
   }, 120000);
 });
