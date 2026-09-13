@@ -360,6 +360,51 @@ function contentBBox(root: Element): { x: number; y: number; width: number; heig
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+// ---------------------------------------------------------------------------
+// Browser global scoping
+//
+// Mermaid needs a DOM, and jsdom's objects must be reachable as globals while it
+// runs. They are installed only for the duration of a mermaid call and removed
+// again: a lingering global `window` makes other libraries take their browser
+// code paths. pptxgenjs picks between `fs` and `XMLHttpRequest` when it encodes
+// media with `typeof window === 'undefined'`, so a window left behind turns every
+// path-based image (backgrounds, SVG previews) into a hard crash at write time.
+// ---------------------------------------------------------------------------
+
+/** Globals to install while mermaid runs, collected during initialize() */
+let browserGlobals: Array<[string, unknown]> = [];
+
+/** Install the collected browser globals; returns a function that restores them. */
+function installBrowserGlobals(): () => void {
+  const saved = browserGlobals.map(
+    ([key]) => [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const,
+  );
+
+  for (const [key, value] of browserGlobals) {
+    try {
+      Object.defineProperty(globalThis, key, {
+        value,
+        configurable: true,
+        writable: true,
+      });
+    } catch {
+      (globalThis as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  return () => {
+    for (const [key, descriptor] of saved) {
+      // Node defines some of these itself (e.g. `navigator`), so the original
+      // descriptor is put back rather than blanket-deleting the key.
+      if (descriptor) {
+        Object.defineProperty(globalThis, key, descriptor);
+      } else {
+        delete (globalThis as Record<string, unknown>)[key];
+      }
+    }
+  };
+}
+
 export class MermaidDiagramRenderer implements DiagramRenderer {
   readonly type = 'mermaid';
   private renderCounter = 0;
@@ -367,23 +412,38 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
   async initialize(): Promise<void> {
     if (initialized) return;
 
+    // Rebuilt from scratch so a retry after a failed init cannot accumulate
+    // duplicates (the list must mirror exactly what install() will undo).
+    browserGlobals = [];
+
     // Set up jsdom globals for mermaid
     const { JSDOM } = await import('jsdom');
     const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       pretendToBeVisual: true,
     });
 
+    // jsdom reports unset CSS padding as "" rather than a length, which makes
+    // `parseFloat` return NaN. cytoscape — which mermaid uses for the mindmap
+    // layout — sizes its container as
+    // `clientWidth - parseFloat(getComputedStyle(el).getPropertyValue('padding-left')) - ...`,
+    // so that NaN propagates into a bounding box it then dereferences
+    // ("Cannot read properties of undefined (reading 'h')"). Patched on the
+    // window itself: cytoscape looks it up through `cy.window().getComputedStyle`.
+    const jsdomGetComputedStyle = dom.window.getComputedStyle.bind(dom.window);
+    dom.window.getComputedStyle = ((element: Element, pseudo?: string | null) => {
+      const style = jsdomGetComputedStyle(element, pseudo);
+      const read = style.getPropertyValue.bind(style);
+      style.getPropertyValue = (property: string) => {
+        const value = read(property);
+        if (value !== '' && value != null) return value;
+        return property.startsWith('padding') ? '0px' : value;
+      };
+      return style;
+    }) as typeof dom.window.getComputedStyle;
+
     // Mermaid requires browser globals
     const assignGlobal = (key: string, value: unknown) => {
-      try {
-        Object.defineProperty(globalThis, key, {
-          value,
-          configurable: true,
-          writable: true,
-        });
-      } catch {
-        (globalThis as Record<string, unknown>)[key] = value;
-      }
+      browserGlobals.push([key, value]);
     };
 
     assignGlobal('window', dom.window);
@@ -436,17 +496,38 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       return text;
     };
 
+    /**
+     * An SVGRect as browsers report it: x/y/width/height and nothing else.
+     *
+     * The derived edges (left/top/right/bottom) must NOT be invented here: a
+     * real SVGRect has no such fields, and mermaid cancels the text-anchor
+     * offset with `-(bbox.x - (bbox.left ?? 0))`. Reporting `left === x` made
+     * that term zero, which pushed shape labels out to the side (the cylinder
+     * node's label sat 55 units left of its node).
+     */
     const toRect = (b: { x: number; y: number; width: number; height: number }) => ({
       x: b.x,
       y: b.y,
       width: b.width,
       height: b.height,
+      toJSON: () => ({}),
+    });
+
+    /** A DOMRect, for the getBoundingClientRect fallback below. */
+    const toDomRect = (b: { x: number; y: number; width: number; height: number }) => ({
+      ...toRect(b),
       top: b.y,
       right: b.x + b.width,
       bottom: b.y + b.height,
       left: b.x,
-      toJSON: () => ({}),
     });
+
+    /** Mermaid collects the nodes it lays out in a `<g class="nodes">` group. */
+    const isMeasuredNode = (el: Element): boolean => {
+      const parent = el.parentElement;
+      if (!parent) return false;
+      return (parent.getAttribute('class') ?? '').split(/\s+/).includes('nodes');
+    };
 
     // Polyfill SVG layout methods that JSDOM lacks
     const polyfillBBox = function (this: Element) {
@@ -454,16 +535,26 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       if (tag === 'style' || tag === 'script' || tag === 'defs' || tag === 'clippath' || tag === 'marker') {
         return toRect({ x: 0, y: 0, width: 0, height: 0 });
       }
-      // Mermaid sizes the output SVG from getBBox() on the root <svg>. Measure
-      // the real geometry instead of a constant, so the viewBox matches content.
-      if (tag === 'svg') {
+      // Mermaid sizes the output SVG from getBBox() on the root <svg>, and it
+      // measures each node the same way (insertMeasuredNode stores the result as
+      // the node's width/height for the layout). Both need real geometry: the
+      // constant fallback below reported every node as 80x40 while the shapes
+      // were painted up to 188x58, so dagre overlapped neighbouring nodes and
+      // clipped every edge against a box smaller than the shape the edge ends
+      // in — which buried the arrowhead under the node's fill.
+      if (tag === 'svg' || isMeasuredNode(this)) {
         const box = contentBBox(this);
         if (box) return toRect(box);
       }
       const text = getDirectText(this);
       const width = text ? Math.max(30, text.length * 9 + 20) : 80;
       const height = text ? 28 : 40;
-      return toRect({ x: 0, y: 0, width, height });
+      // A browser reports a centred <text> box as starting at x - width/2; the
+      // same convention elementLocalBox already uses when measuring the frame.
+      const isText = tag === 'text' || tag === 'tspan';
+      const anchor = parseFloat(this.getAttribute('x') ?? '');
+      const x = isText ? (Number.isFinite(anchor) ? anchor : 0) - width / 2 : 0;
+      return toRect({ x, y: 0, width, height });
     };
 
     if (!(dom.window.SVGElement.prototype as unknown as Record<string, unknown>).getBBox) {
@@ -473,7 +564,10 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       (dom.window.Element.prototype as unknown as Record<string, unknown>).getBBox = polyfillBBox;
     }
     if (!dom.window.Element.prototype.getBoundingClientRect) {
-      dom.window.Element.prototype.getBoundingClientRect = polyfillBBox as unknown as () => DOMRect;
+      dom.window.Element.prototype.getBoundingClientRect = (function (this: Element) {
+        const box = polyfillBBox.call(this);
+        return toDomRect(box);
+      }) as unknown as () => DOMRect;
     }
     const computeTextLength = function (this: Element) {
       const text = getDirectText(this);
@@ -542,9 +636,15 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       }) as unknown as MediaQueryList;
     }
 
-    // Import and initialize mermaid
-    const mermaid = (await import('mermaid')).default;
-    mermaid.initialize(this.buildConfig() as unknown as Parameters<typeof mermaid.initialize>[0]);
+    // Import and initialize mermaid, with the DOM globals in place for the
+    // import itself (mermaid touches browser APIs as its modules evaluate).
+    const restore = installBrowserGlobals();
+    try {
+      const mermaid = (await import('mermaid')).default;
+      mermaid.initialize(this.buildConfig() as unknown as Parameters<typeof mermaid.initialize>[0]);
+    } finally {
+      restore();
+    }
 
     initialized = true;
   }
@@ -565,6 +665,10 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       },
       flowchart: { htmlLabels: false, curve: 'basis', useMaxWidth: false },
       sequence: { useMaxWidth: false },
+      // jsdom has no layout engine: offsetWidth is 0 rather than undefined, so
+      // mermaid's own "no parent width" fallback never fires and the gantt chart
+      // ends up with a zero-width viewBox. Pin the viewport width instead.
+      gantt: { useWidth: 1200 },
     };
   }
 
@@ -574,16 +678,22 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
     const mermaid = (await import('mermaid')).default;
     const id = `mfly-mermaid-${Date.now()}-${this.renderCounter++}`;
 
-    // Re-apply per render so diagram follows the selected presentation theme
-    mermaid.initialize(this.buildConfig(theme) as unknown as Parameters<typeof mermaid.initialize>[0]);
-
+    let svg: string;
+    const restore = installBrowserGlobals();
     try {
-      const { svg } = await mermaid.render(id, code.trim());
-      return svgToPng(svg, 1200);
+      // Re-apply per render so diagram follows the selected presentation theme
+      mermaid.initialize(this.buildConfig(theme) as unknown as Parameters<typeof mermaid.initialize>[0]);
+      ({ svg } = await mermaid.render(id, code.trim()));
     } catch (err) {
       throw new Error(
         `Mermaid render failed: ${err instanceof Error ? err.message : String(err)}`,
       );
+    } finally {
+      restore();
     }
+
+    // Rasterized after the globals are gone, so the native addon also loads in a
+    // clean Node environment.
+    return svgToPng(svg, 1200);
   }
 }
