@@ -44,9 +44,11 @@
     "cli",
     "mermaid",
     "graphviz",
+    "plantuml",
     "echarts"
   ],
   "dependencies": {
+    "@plantuml/mcp-js": "^0.2.2",
     "@resvg/resvg-js": "^2.6.0",
     "@viz-js/viz": "^3.0.0",
     "chalk": "^5.4.0",
@@ -68,6 +70,7 @@
     "@types/jsdom": "^21.0.0",
     "@types/mdast": "^4.0.4",
     "@types/node": "^22.0.0",
+    "jszip": "^3.10.2",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

@@ -62,6 +62,17 @@ graph LR
 
 ---
 
+## PlantUML 时序图
+
+```plantuml
+@startuml
+Alice -> Bob : 登录请求
+Bob --> Alice : 登录成功
+@enduml
+```
+
+---
+
 ## 高亮代码行
 
 ```typescript

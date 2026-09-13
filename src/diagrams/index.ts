@@ -8,40 +8,41 @@ import type { Theme } from '../models/theme.js';
 import { MermaidDiagramRenderer } from './mermaid-renderer.js';
 import { GraphvizDiagramRenderer } from './graphviz-renderer.js';
 import { EChartsDiagramRenderer } from './echarts-renderer.js';
+import { PlantUmlDiagramRenderer } from './plantuml-renderer.js';
+import { normalizeDiagramLanguage } from './languages.js';
 
-/** Language identifiers that are diagrams */
-const DIAGRAM_LANGUAGES: Record<string, () => DiagramRenderer> = {
+export { isDiagramLanguage } from './languages.js';
+
+/**
+ * Canonical language → renderer factory. Factories (not instances) so that
+ * merely knowing a language never constructs a renderer or loads its engine.
+ */
+const RENDERERS: Record<string, () => DiagramRenderer> = {
   mermaid: () => new MermaidDiagramRenderer(),
   dot: () => new GraphvizDiagramRenderer(),
-  graphviz: () => new GraphvizDiagramRenderer(),
   echarts: () => new EChartsDiagramRenderer(),
+  plantuml: () => new PlantUmlDiagramRenderer(),
 };
 
-/** Cached renderer instances (lazy init) */
+/** Cached renderer instances (lazy init), keyed by canonical language */
 const instances = new Map<string, DiagramRenderer>();
 
 function getOrCreate(language: string): DiagramRenderer | undefined {
-  // Normalize 'graphviz' → 'dot' for caching
-  const key = language === 'graphviz' ? 'dot' : language;
+  // Resolve aliases first so the cache key and the factory lookup agree.
+  const canonical = normalizeDiagramLanguage(language);
+  if (!canonical) return undefined;
 
-  if (instances.has(key)) return instances.get(key)!;
+  const cached = instances.get(canonical);
+  if (cached) return cached;
 
-  const factory = DIAGRAM_LANGUAGES[language];
-  if (!factory) return undefined;
-
-  const renderer = factory();
-  instances.set(key, renderer);
+  const renderer = RENDERERS[canonical]();
+  instances.set(canonical, renderer);
   return renderer;
-}
-
-/** Check if a code block language is a diagram type */
-export function isDiagramLanguage(language: string): boolean {
-  return language.toLowerCase() in DIAGRAM_LANGUAGES;
 }
 
 /** Get a diagram renderer by language */
 export function getDiagramRenderer(language: string): DiagramRenderer | undefined {
-  return getOrCreate(language.toLowerCase());
+  return getOrCreate(language);
 }
 
 /**
@@ -53,7 +54,7 @@ export async function renderDiagram(
   code: string,
   theme?: Theme,
 ): Promise<Buffer> {
-  const renderer = getOrCreate(language.toLowerCase());
+  const renderer = getOrCreate(language);
   if (!renderer) {
     throw new Error(`No diagram renderer for language: ${language}`);
   }

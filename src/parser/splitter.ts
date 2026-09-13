@@ -21,9 +21,7 @@ import type {
   CalloutElement,
   ImageAlign,
 } from '../models/slide.js';
-
-/** Diagram languages that trigger DiagramElement instead of CodeElement */
-const DIAGRAM_LANGUAGES = new Set(['mermaid', 'dot', 'graphviz', 'echarts']);
+import { normalizeDiagramLanguage } from '../diagrams/languages.js';
 
 /** Callout variants recognized in blockquotes: > [!NOTE] / [!TIP] / ... */
 const CALLOUT_VARIANTS = new Set([
@@ -252,10 +250,11 @@ function nodeToElement(node: Content): SlideElement | null {
 
     case 'code': {
       const lang = node.lang?.toLowerCase() ?? '';
-      if (DIAGRAM_LANGUAGES.has(lang)) {
+      const diagramType = normalizeDiagramLanguage(lang);
+      if (diagramType) {
         return {
           type: 'diagram',
-          diagramType: lang === 'graphviz' ? 'dot' : lang,
+          diagramType,
           content: node.value,
         } satisfies DiagramElement;
       }

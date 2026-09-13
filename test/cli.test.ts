@@ -150,4 +150,77 @@ describe('mfly CLI contract', () => {
     expect(res.stderr).toContain('assets');
     expect(res.stderr).not.toContain('Image not found: logo.png');
   });
+
+  it('keeps --json stdout parseable with a PlantUML block in the deck', () => {
+    // The PlantUML engine narrates its internals through console.log; anything
+    // it leaks to stdout would break the single-JSON-line contract.
+    writeFileSync(
+      join(tmpDir, 'puml-json.md'),
+      '# UML\n\n## 时序\n\n```plantuml\nAlice -> Bob : hi\n@enduml\n```\n',
+    );
+
+    const res = runCli(['puml-json.md', '--json'], tmpDir);
+
+    expect(res.status).toBe(0);
+    const parsed = JSON.parse(res.stdout);
+    expect(parsed.ok).toBe(true);
+  }, 60000);
+});
+
+/**
+ * Regressions for leaving jsdom's globals installed after a mermaid render.
+ * pptxgenjs chooses between `fs` and browser APIs with
+ * `typeof window === 'undefined'`, so a lingering global `window` turned every
+ * path-based image into a hard failure — the whole deck, not just that slide.
+ */
+describe('mermaid does not leak browser globals', () => {
+  const MERMAID = '```mermaid\ngraph TD\n  A-->B\n```\n';
+
+  it('converts a deck with a mermaid diagram and a background image', () => {
+    mkdirSync(join(tmpDir, 'bg'), { recursive: true });
+    cpSync(fixturePng, join(tmpDir, 'bg', 'bg.png'));
+    writeFileSync(
+      join(tmpDir, 'leak-bg.md'),
+      `# Leak\n\n${MERMAID}\n## BG\n\ncontent\n\n@(background=./bg/bg.png)\n`,
+    );
+
+    const res = runCli(['leak-bg.md'], tmpDir);
+
+    expect(res.status).toBe(0);
+    expect(existsSync(join(tmpDir, 'leak-bg.pptx'))).toBe(true);
+  }, 120000);
+
+  it('converts a deck with a mermaid diagram and an embedded SVG image', () => {
+    mkdirSync(join(tmpDir, 'svg'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, 'svg', 'logo.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>\n',
+    );
+    writeFileSync(
+      join(tmpDir, 'leak-svg.md'),
+      `# Leak\n\n${MERMAID}\n## SVG\n\n![logo](./svg/logo.svg)\n`,
+    );
+
+    const res = runCli(['leak-svg.md'], tmpDir);
+
+    expect(res.status).toBe(0);
+    expect(existsSync(join(tmpDir, 'leak-svg.pptx'))).toBe(true);
+  }, 120000);
+
+  it('does not leak a global window into a later file in the same batch', () => {
+    mkdirSync(join(tmpDir, 'batch'), { recursive: true });
+    cpSync(fixturePng, join(tmpDir, 'batch', 'bg.png'));
+    // Sorted order puts the mermaid deck first, so the background deck runs in a
+    // process that has already rendered mermaid.
+    writeFileSync(join(tmpDir, 'aa-mermaid.md'), `# A\n\n${MERMAID}`);
+    writeFileSync(
+      join(tmpDir, 'bb-background.md'),
+      '# B\n\ncontent\n\n@(background=./batch/bg.png)\n',
+    );
+
+    const res = runCli(['aa-mermaid.md', 'bb-background.md', '-t', 'clean'], tmpDir);
+
+    expect(res.status).toBe(0);
+    expect(existsSync(join(tmpDir, 'bb-background.pptx'))).toBe(true);
+  }, 120000);
 });

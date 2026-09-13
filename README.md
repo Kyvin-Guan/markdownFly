@@ -12,6 +12,7 @@
 - 📊 **Built-in Diagram Rendering (Zero native binary dependencies)**:
   - **Mermaid**: Flowcharts, sequence diagrams, state diagrams, class diagrams.
   - **Graphviz / DOT**: Network graphs, finite state machines, architecture topologies (via WASM).
+  - **PlantUML**: Sequence, class, activity, state, component and use-case diagrams (TeaVM-compiled engine — no JVM required).
   - **ECharts**: Bar charts, line charts, pie charts directly from JSON options (via ECharts SSR).
 - 🖼️ **Image Embedding**: Local file paths, remote URLs (`http://`/`https://`), and base64 Data URIs.
 - 📐 **Automatic Layout Detection**: Title slides, section dividers, code spotlights, quotes, and content slides.
@@ -217,6 +218,14 @@ A standalone image line renders as a slide element (aspect ratio preserved, cent
 - Keys: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`)
 - Units: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`, `%` (relative to the column; single value preserves aspect ratio)
 - Invalid params are silently ignored — the image still renders
+- Formats: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`. Alt text carries into the
+  PPTX, so `![架构图](...)` is what a screen reader announces.
+- ⚠ `webp` is stored faithfully but not every reader decodes it — PowerPoint for the web
+  and Office 2019 and earlier show a broken image. A warning is printed on stderr.
+- `svg` is rasterized to a PNG (1200px wide) as it is embedded, so it renders the same in
+  every reader. The author's own framing is kept, including any padding built into the
+  viewBox. The trade-off: the deck carries a raster rather than a vector, so it no longer
+  scales losslessly, and SVG-heavy decks get larger.
 - ⚠ Security: image paths (`![](...)` and `@(background=...)`) are resolved without restrictions — only convert markdown you own or trust.
 
 ### Code Blocks with Syntax Highlighting
@@ -266,7 +275,28 @@ digraph Architecture {
   "series": [{ "data": [150, 230, 224, 218], "type": "bar" }]
 }
 ```
+
+```plantuml
+@startuml
+Alice -> Bob : 登录请求
+Bob --> Alice : 登录成功
+@enduml
+```
 ````
+
+Accepted diagram languages: `mermaid`, `dot` (alias `graphviz`), `echarts`, `plantuml` (alias `puml`).
+Diagram slides follow the presentation theme, including its dark palette.
+
+PlantUML notes:
+
+- The `@startuml`/`@enduml` envelope is optional — bare source is wrapped for you, and an
+  unclosed `@startuml` is closed automatically.
+- `!theme` is not available (the bundled engine ships no theme files); use `skinparam`
+  instead. The directive is skipped with a warning rather than failing the diagram.
+- Set `MFLY_DEBUG=1` to forward the PlantUML engine's internal logging to stderr; it is
+  muted by default so it cannot disturb stdout.
+- Diagram errors do not fail the deck: the affected slide shows a red placeholder and the
+  rest of the presentation is still generated.
 
 ### Footnotes
 
