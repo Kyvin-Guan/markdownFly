@@ -11,7 +11,7 @@ import PptxGenJS from 'pptxgenjs';
 import type { SlideNode, SlideElement } from '../../models/slide.js';
 import type { Theme } from '../../models/theme.js';
 import type { RenderContext } from './index.js';
-import { getPngSize } from '../../utils/png-size.js';
+import { getImageSize } from '../../utils/image-size.js';
 import { fitInBox, fitImageWithOptions } from '../../utils/image-fit.js';
 import { tableToChartOption } from '../../utils/table-chart.js';
 import { log } from '../../utils/progress.js';
@@ -371,13 +371,17 @@ async function renderElement(
         const pngBuffer = await ctx.renderDiagram(element.diagramType, element.content);
         // Diagrams can be very wide (graphviz chains) or very tall (mermaid
         // flows) — scale into the box, aspect preserved.
-        const imgSize = getPngSize(pngBuffer) ?? { width: 8, height: 3.5 };
+        const imgSize = getImageSize(pngBuffer) ?? { width: 8, height: 3.5 };
         const boxH = Math.max(1.2, maxH);
         const fitted = fitInBox(imgSize, w, boxH);
         const base64 = pngBuffer.toString('base64');
 
         slide.addImage({
           data: `image/png;base64,${base64}`,
+          // A diagram has no alt text of its own, so the slide title describes
+          // it best; without one, name the notation at least. Passing nothing
+          // would leave pptxgenjs' internal placeholder filename as the alt text.
+          altText: node.title || `${element.diagramType} diagram`,
           x: x + (w - fitted.width) / 2,
           y: yPos,
           w: fitted.width,
@@ -385,7 +389,12 @@ async function renderElement(
         });
         return fitted.height + 0.2;
       } catch (err) {
-        slide.addText(`[Diagram render error: ${err instanceof Error ? err.message : 'unknown'}]`, {
+        const reason = err instanceof Error ? err.message : 'unknown';
+        const message = `[Diagram render error: ${reason}]`;
+        // Mirrors the image path below: the deck still generates with a
+        // placeholder on the slide, but headless runs need to hear about it.
+        log.warn(`[${node.title ?? 'slide'}] ${message}`);
+        slide.addText(message, {
           x,
           y: yPos,
           w,
@@ -405,7 +414,8 @@ async function renderElement(
           log.warn(`[${node.title ?? 'slide'}] ${resolved.error}`);
           return 0;
         }
-        const imgSize = getPngSize(readFileSync(resolved.path)) ?? { width: 6, height: 3.0 };
+        const fileData = readFileSync(resolved.path);
+        const imgSize = getImageSize(fileData) ?? { width: 6, height: 3.0 };
         const boxH = Math.max(1.2, maxH);
         const placed = fitImageWithOptions(
           imgSize,
@@ -416,10 +426,25 @@ async function renderElement(
         // encoding, which crashes under ESM hosts (no `require` → XHR path).
         const ext = resolved.path.split('.').pop()?.toLowerCase() ?? 'png';
         const mime = IMAGE_MIME[ext] ?? 'image/png';
-        const data = `${mime};base64,${readFileSync(resolved.path).toString('base64')}`;
+        const data = `${mime};base64,${fileData.toString('base64')}`;
+
+        // The deck stores WebP faithfully, but a common reader cannot decode it:
+        // PowerPoint for the web and Office 2019 and earlier show a broken image.
+        // Converting would mean taking on a WebP decoder, so say so instead.
+        if (ext === 'webp') {
+          log.warn(
+            `[${node.title ?? 'slide'}] WebP does not render in PowerPoint for the web ` +
+              `or Office 2019 and earlier — some recipients may see a broken image (${element.src})`,
+          );
+        }
+
         slide.addImage({
           data,
           path: 'preencoded.png',
+          // The author's alt text when they wrote one; otherwise the source they
+          // referenced, which at least beats pptxgenjs' internal placeholder name.
+          // Falsy, not nullish: `![](...)` parses to an empty alt string.
+          altText: element.alt || element.src,
           x: x + placed.x,
           y: yPos,
           w: placed.width,

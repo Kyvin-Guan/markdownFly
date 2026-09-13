@@ -7,3 +7,7 @@
 ---
 
 ![缩略图](./pixel-400x300.png){width=120px,height=90px,align=right}
+
+---
+
+![竖版 JPEG 200x400](./portrait-200x400.jpg){w=40%}

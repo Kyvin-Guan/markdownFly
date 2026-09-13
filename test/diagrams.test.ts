@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderDiagram, isDiagramLanguage } from '../src/diagrams/index.js';
-import { getPngSize } from '../src/utils/png-size.js';
+import { getImageSize } from '../src/utils/image-size.js';
 import { fitInBox } from '../src/utils/image-fit.js';
 import { cleanTheme, darkTheme } from '../src/themes/index.js';
 
@@ -63,7 +63,7 @@ describe('Diagrams', () => {
 
   it('mermaid flowchart PNG covers the full layout (no tiny viewBox crop)', async () => {
     const buffer = await renderDiagram('mermaid', FLOWCHART_CODE, cleanTheme);
-    const size = getPngSize(buffer);
+    const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     expect(size!.width).toBeGreaterThan(0);
     // TD flow with 7 nodes must be much taller than a cropped 96x56-layout
@@ -74,7 +74,7 @@ describe('Diagrams', () => {
 
   it('mermaid renders under a dark theme', async () => {
     const buffer = await renderDiagram('mermaid', FLOWCHART_CODE, darkTheme);
-    const size = getPngSize(buffer);
+    const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     expect(size!.width).toBeGreaterThan(0);
   }, 60000);
@@ -86,7 +86,7 @@ describe('Diagrams', () => {
       CLI -> Parser -> Transform -> PPTXRenderer -> FileOutput;
     }`;
     const buffer = await renderDiagram('dot', code, cleanTheme);
-    const size = getPngSize(buffer);
+    const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     expect(size!.width).toBeGreaterThan(0);
     expect(size!.height / size!.width).toBeLessThan(0.3);

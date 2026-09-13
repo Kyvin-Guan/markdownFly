@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { inflateSync } from 'node:zlib';
 import { createLinearGradientPng, hexToRgb, encodePngRgb } from '../src/utils/gradient.js';
-import { getPngSize } from '../src/utils/png-size.js';
+import { getImageSize } from '../src/utils/image-size.js';
 
 /** Decode a raw pixel from the PNG's IDAT scanlines (filter byte 0 stripped). */
 function readRgb(png: Buffer, x: number, y: number, width: number): number[] {
@@ -21,7 +21,7 @@ function readRgb(png: Buffer, x: number, y: number, width: number): number[] {
 describe('Gradient PNG generator', () => {
   it('encodes a valid PNG with the requested dimensions', () => {
     const png = createLinearGradientPng('FFFFFF', '000000', 135);
-    expect(getPngSize(png)).toEqual({ width: 192, height: 108 });
+    expect(getImageSize(png)).toEqual({ width: 192, height: 108 });
     // PNG signature
     expect([...png.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
@@ -47,6 +47,6 @@ describe('Gradient PNG generator', () => {
 
   it('can encode a single-color image', () => {
     const png = encodePngRgb(2, 2, () => [18, 52, 86]);
-    expect(getPngSize(png)).toEqual({ width: 2, height: 2 });
+    expect(getImageSize(png)).toEqual({ width: 2, height: 2 });
   });
 });
