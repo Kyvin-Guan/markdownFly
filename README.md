@@ -174,24 +174,24 @@ layout: code # Optional default layout for content slides
 Split a slide into columns and rows with standalone lines — no extra markup:
 
 ````markdown
-## 架构概览
+## Architecture Overview
 
-### 架构图
+### Architecture Diagram
 ```mermaid
 graph LR
     A[Client] --> B[API]
 ```
-<->                   <!-- 左右分栏:左边放图 -->
+<->                   <!-- two columns: diagram on the left -->
 
-### 关键点
-- 低延迟
-- 可扩展
-- 成本可控
-===                   <!-- 上下分块:下面是另一行内容 -->
+### Key Points
+- Low latency
+- Horizontally scalable
+- Cost-efficient
+===                   <!-- stacked rows: what follows starts a new row -->
 
-### 总结
+### Summary
 > [!TIP]
-> `===` 让一页拆成上下块,适合前后对比。
+> `===` splits a slide into stacked rows — handy for before/after comparisons.
 ````
 
 - `<->` (standalone line): horizontal separator → **columns** (side-by-side).
@@ -203,14 +203,14 @@ graph LR
 A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide options:
 
 ```markdown
-## 表格变图表
+## Table to Chart
 
-| 季度 | 订单量 |
+| Quarter | Orders |
 | :--- | :--- |
 | Q1 | 320 |
 | Q2 | 580 |
 
-@(chart=bar, notes=这里口头展开Q1-2数据)
+@(chart=bar, notes=expand on the Q1-Q2 numbers here)
 ```
 
 | Directive | Value | Effect |
@@ -249,15 +249,15 @@ Supported variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` 
 A standalone image line renders as a slide element (aspect ratio preserved, centered in its column). Paths are resolved relative to the markdown file, or relative to `resource_dir` (which itself is resolved relative to the markdown file, never the current working directory); remote URLs (`http/https`) and base64 data URIs also work. A missing or failed image is skipped with a warning on stderr — the deck is still generated.
 
 ```markdown
-![架构图](./assets/arch.png){w=6in,align=center}
-![对比图](./assets/compare.jpg){w=60%}
+![Architecture](./assets/arch.png){w=6in,align=center}
+![Comparison](./assets/compare.jpg){w=60%}
 ![logo](./logo.svg){width=120px,height=40mm,align=right}
 ```
 
 - Keys: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`)
 - Units: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`, `%` (relative to the column; single value preserves aspect ratio)
 - Invalid params are silently ignored — the image still renders
-- Formats: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`. Alt text carries into the PPTX, so `![架构图](...)` is what a screen reader announces.
+- Formats: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`. Alt text carries into the PPTX, so `![Architecture](...)` is what a screen reader announces.
 - ⚠ `webp` is stored faithfully but not every reader decodes it — PowerPoint for the web and Office 2019 and earlier show a broken image. A warning is printed on stderr.
 - `svg` is rasterized to a PNG (1200px wide) as it is embedded, so it renders the same in every reader. The author's own framing is kept, including any padding built into the viewBox. The trade-off: the deck carries a raster rather than a vector, so it no longer scales losslessly, and SVG-heavy decks get larger.
 - ⚠ Security: image paths (`![](...)` and `@(background=...)`) are resolved without restrictions — only convert markdown you own or trust.
@@ -312,8 +312,8 @@ digraph Architecture {
 
 ````plantuml
 @startuml
-Alice -> Bob : 登录请求
-Bob --> Alice : 登录成功
+Alice -> Bob : login request
+Bob --> Alice : login OK
 @enduml
 ````
 `````

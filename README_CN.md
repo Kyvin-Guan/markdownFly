@@ -158,7 +158,7 @@ mfly docs/*.md --quiet
 ```yaml
 ---
 theme: dark # 可选：clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink
-author: "Your Name"
+author: "你的名字"
 footer: "保密 - {page} / {total}" # {page}/{total}/{section}/{title}
 resource_dir: ./assets # 相对图片路径的基础目录
 layout: code # 内容幻灯片的可选默认布局
