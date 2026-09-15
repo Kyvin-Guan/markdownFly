@@ -1,7 +1,46 @@
-# MarkdownFly (mfly) 🚀
+<div align="center">
 
-> **Markdown to PowerPoint (.pptx) CLI tool designed for developers.**
-> Write in Markdown with syntax-highlighted code and embedded diagrams; generate beautiful, editable slides in seconds.
+# 🚀 MarkdownFly (mfly)
+
+**Markdown to PowerPoint (.pptx) — the CLI tool built for developers.**  
+Write slides in Markdown with syntax-highlighted code and embedded diagrams.  
+Generate beautiful, fully editable `.pptx` in seconds.
+
+[![npm version](https://img.shields.io/npm/v/markdownfly?style=flat-square&color=2563EB)](https://www.npmjs.com/package/markdownfly)
+[![npm downloads](https://img.shields.io/npm/dm/markdownfly?style=flat-square&color=38BDF8)](https://www.npmjs.com/package/markdownfly)
+[![license](https://img.shields.io/npm/l/markdownfly?style=flat-square&color=22C55E)](./LICENSE)
+[![node](https://img.shields.io/node/v/markdownfly?style=flat-square&color=F59E0B)](https://nodejs.org)
+
+[English](./README.md) · [简体中文](./README_CN.md)
+
+</div>
+
+---
+
+<details>
+<summary>📖 Table of Contents</summary>
+
+- [✨ Features](#-features)
+- [📦 Installation](#-installation)
+- [🚀 Quick Start](#-quick-start)
+- [🎨 Built-in Themes](#-built-in-themes)
+- [📝 Markdown Syntax Guide](#-markdown-syntax-guide)
+  - [Slide Splitting Rules](#slide-splitting-rules)
+  - [Frontmatter](#frontmatter)
+  - [In-Slide Layout (Grid)](#in-slide-layout-grid)
+  - [Slide Directives](#slide-directives-)
+  - [Callouts](#callouts)
+  - [Task Lists](#task-lists)
+  - [Images](#images)
+  - [Code Blocks with Syntax Highlighting](#code-blocks-with-syntax-highlighting)
+  - [Diagram Code Blocks](#diagram-code-blocks)
+  - [Footnotes](#footnotes)
+- [🧪 Testing](#-testing)
+- [🤔 Why MarkdownFly?](#-why-markdownfly)
+- [⭐ Star History](#-star-history)
+- [📄 License](#-license)
+
+</details>
 
 ---
 
@@ -134,7 +173,7 @@ layout: code # Optional default layout for content slides
 
 Split a slide into columns and rows with standalone lines — no extra markup:
 
-```markdown
+````markdown
 ## 架构概览
 
 ### 架构图
@@ -153,7 +192,7 @@ graph LR
 ### 总结
 > [!TIP]
 > `===` 让一页拆成上下块,适合前后对比。
-```
+````
 
 - `<->` (standalone line): horizontal separator → **columns** (side-by-side).
 - `===` (standalone line): vertical separator → **rows** (stacked).
@@ -218,20 +257,15 @@ A standalone image line renders as a slide element (aspect ratio preserved, cent
 - Keys: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`)
 - Units: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`, `%` (relative to the column; single value preserves aspect ratio)
 - Invalid params are silently ignored — the image still renders
-- Formats: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`. Alt text carries into the
-  PPTX, so `![架构图](...)` is what a screen reader announces.
-- ⚠ `webp` is stored faithfully but not every reader decodes it — PowerPoint for the web
-  and Office 2019 and earlier show a broken image. A warning is printed on stderr.
-- `svg` is rasterized to a PNG (1200px wide) as it is embedded, so it renders the same in
-  every reader. The author's own framing is kept, including any padding built into the
-  viewBox. The trade-off: the deck carries a raster rather than a vector, so it no longer
-  scales losslessly, and SVG-heavy decks get larger.
+- Formats: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`. Alt text carries into the PPTX, so `![架构图](...)` is what a screen reader announces.
+- ⚠ `webp` is stored faithfully but not every reader decodes it — PowerPoint for the web and Office 2019 and earlier show a broken image. A warning is printed on stderr.
+- `svg` is rasterized to a PNG (1200px wide) as it is embedded, so it renders the same in every reader. The author's own framing is kept, including any padding built into the viewBox. The trade-off: the deck carries a raster rather than a vector, so it no longer scales losslessly, and SVG-heavy decks get larger.
 - ⚠ Security: image paths (`![](...)` and `@(background=...)`) are resolved without restrictions — only convert markdown you own or trust.
 
 ### Code Blocks with Syntax Highlighting
 
-````markdown
-```typescript
+`````markdown
+````typescript
 interface User {
   id: string;
   name: string;
@@ -240,63 +274,59 @@ interface User {
 function greet(user: User): string {
   return `Hello, ${user.name}!`;
 }
-```
 ````
+`````
 
-````markdown
-```python
+`````markdown
+````python
 def quick_sort(arr): ...
-```
-@(highlight=1,3-4)   <!-- highlight specific lines -->
 ````
+@(highlight=1,3-4)   <!-- highlight specific lines -->
+`````
 
 ### Diagram Code Blocks
 
-````markdown
-```mermaid
+`````markdown
+````mermaid
 graph TD
     A[Client] --> B[API Gateway]
     B --> C[Auth Service]
     B --> D[Data Service]
-```
+````
 
-```dot
+````dot
 digraph Architecture {
     rankdir=LR;
     node [shape=box, style=filled, fillcolor=lightblue];
     Frontend -> Backend -> Database;
 }
-```
+````
 
-```echarts
+````echarts
 {
   "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"] },
   "yAxis": { "type": "value" },
   "series": [{ "data": [150, 230, 224, 218], "type": "bar" }]
 }
-```
+````
 
-```plantuml
+````plantuml
 @startuml
 Alice -> Bob : 登录请求
 Bob --> Alice : 登录成功
 @enduml
-```
 ````
+`````
 
 Accepted diagram languages: `mermaid`, `dot` (alias `graphviz`), `echarts`, `plantuml` (alias `puml`).
 Diagram slides follow the presentation theme, including its dark palette.
 
 PlantUML notes:
 
-- The `@startuml`/`@enduml` envelope is optional — bare source is wrapped for you, and an
-  unclosed `@startuml` is closed automatically.
-- `!theme` is not available (the bundled engine ships no theme files); use `skinparam`
-  instead. The directive is skipped with a warning rather than failing the diagram.
-- Set `MFLY_DEBUG=1` to forward the PlantUML engine's internal logging to stderr; it is
-  muted by default so it cannot disturb stdout.
-- Diagram errors do not fail the deck: the affected slide shows a red placeholder and the
-  rest of the presentation is still generated.
+- The `@startuml`/`@enduml` envelope is optional — bare source is wrapped for you, and an unclosed `@startuml` is closed automatically.
+- `!theme` is not available (the bundled engine ships no theme files); use `skinparam` instead. The directive is skipped with a warning rather than failing the diagram.
+- Set `MFLY_DEBUG=1` to forward the PlantUML engine's internal logging to stderr; it is muted by default so it cannot disturb stdout.
+- Diagram errors do not fail the deck: the affected slide shows a red placeholder and the rest of the presentation is still generated.
 
 ### Footnotes
 
@@ -314,6 +344,41 @@ pnpm test
 
 ---
 
+## 🤔 Why MarkdownFly?
+
+| Feature | **MarkdownFly** | Marp | Slidev | reveal.js |
+| :--- | :---: | :---: | :---: | :---: |
+| Output format | ✅ `.pptx` (editable) | PDF / HTML | HTML | HTML |
+| No browser / headless Chrome needed | ✅ | ❌ | ❌ | ❌ |
+| Zero native binary dependencies | ✅ | ❌ | ❌ | ❌ |
+| Mermaid / Graphviz / PlantUML / ECharts | ✅ All 4 | Mermaid only | Mermaid only | ❌ |
+| CLI-first, CI/CD friendly | ✅ | ✅ | ⚠️ | ❌ |
+| Syntax-highlighted code blocks | ✅ Shiki | ✅ | ✅ | ⚠️ |
+| Editable slides after export | ✅ | ❌ | ❌ | ❌ |
+| In-slide grid layout | ✅ `<->` / `===` | ❌ | ⚠️ | ❌ |
+
+> **TL;DR** — MarkdownFly is the only tool that outputs a **natively editable `.pptx`** with full diagram support and **zero native binary dependencies**.
+
+---
+
+## ⭐ Star History
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Kyvin-Guan/markdownFly&type=Date)](https://star-history.com/#Kyvin-Guan/markdownFly&Date)
+
+</div>
+
+---
+
 ## 📄 License
 
 MIT License © 2026 MarkdownFly Contributors
+
+---
+
+<div align="center">
+
+Made with ❤️ by [MarkdownFly Contributors](https://github.com/Kyvin-Guan/markdownFly/graphs/contributors)
+
+</div>
