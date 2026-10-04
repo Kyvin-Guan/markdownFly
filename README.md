@@ -243,7 +243,7 @@ A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide op
 
 | Directive | Value | Effect |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` | Override auto-detected layout |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | Override auto-detected layout |
 | `notes` | text | Speaker notes for this slide |
 | `chart` | `bar` / `line` / `pie` | Render the first table as a chart |
 | `highlight` | `2-4,6` | Highlight lines in the slide's code block |
@@ -264,6 +264,8 @@ A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide op
 ```
 
 Supported variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` / `DANGER` — rendered as theme-styled accent cards.
+
+You can also give a card a custom title by writing it after the marker: `> [!NOTE] Deploy reminder`.
 
 ### Task Lists
 
@@ -355,6 +357,36 @@ PlantUML notes:
 - `!theme` is not available (the bundled engine ships no theme files); use `skinparam` instead. The directive is skipped with a warning rather than failing the diagram.
 - Set `MFLY_DEBUG=1` to forward the PlantUML engine's internal logging to stderr; it is muted by default so it cannot disturb stdout.
 - Diagram errors do not fail the deck: the affected slide shows a red placeholder and the rest of the presentation is still generated.
+
+#### Comments (`%%` Draft Lines)
+
+A standalone line starting with `%%` is removed entirely before rendering —
+handy for draft notes that never reach the deck. Lines inside fenced code
+blocks are never affected.
+
+```markdown
+%% this line will never appear in your slides
+```
+
+#### Cover Author / Date Lines
+
+The first cover slide recognizes `作者：…` / `日期：…` prefix lines (multiple
+lines allowed) as cover metadata rather than body paragraphs:
+
+```markdown
+作者：张三
+日期：2026-10-04
+```
+
+#### Image-Page Auto Layout
+
+A slide holding 1–3 images with no substantial body text is auto-detected as an
+image page (`image-single` / `image-double` / `image-triple`). You can also opt
+in explicitly, including via the `layout` directive:
+
+```markdown
+@(layout=image-single)
+```
 
 ### Footnotes
 

@@ -235,7 +235,7 @@ graph LR
 
 | 指令 | 值 | 效果 |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` | 覆盖自动检测的布局 |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | 覆盖自动检测的布局 |
 | `notes` | 文本 | 该幻灯片的演讲者备注 |
 | `chart` | `bar` / `line` / `pie` | 将第一个表格渲染为图表 |
 | `highlight` | `2-4,6` | 高亮幻灯片代码块中的指定行 |
@@ -256,6 +256,8 @@ graph LR
 ```
 
 支持的变体：`NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` / `DANGER` — 渲染为主题风格的强调卡片。
+
+也可以在标记后写上自定义标题：`> [!NOTE] 部署提醒`。
 
 ### 任务清单
 
@@ -347,6 +349,31 @@ PlantUML 说明：
 - `!theme` 不可用（打包的引擎不包含主题文件）；请改用 `skinparam`。该指令会跳过并输出警告，而不会导致图表失败。
 - 设置 `MFLY_DEBUG=1` 可将 PlantUML 引擎的内部日志转发到 stderr；默认静音以避免干扰 stdout。
 - 图表错误不会导致文档生成失败：受影响的幻灯片会显示红色占位符，演示文档其余部分仍会正常生成。
+
+#### 注释（`%%` 草稿行）
+
+以 `%%` 开头的独立行会被完全移除，绝不进入幻灯片——适合写不会出现的草稿/批注。代码块内部不受影响。
+
+```markdown
+%% 这行不会出现在你的幻灯片里
+```
+
+#### 封面作者 / 日期行
+
+首页封面会识别以 `作者：…` / `日期：…` 开头的行（可多行）作为封面元信息，而不是正文段落：
+
+```markdown
+作者：张三
+日期：2026-10-04
+```
+
+#### 图片页自动布局
+
+一页只含 1–3 张图片且没有大段正文时，会自动识别为图片页布局（`image-single` / `image-double` / `image-triple`）。也可显式指定，包括通过 `layout` 指令：
+
+```markdown
+@(layout=image-single)
+```
 
 ### 注脚说明
 
