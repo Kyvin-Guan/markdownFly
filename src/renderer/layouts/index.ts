@@ -15,7 +15,7 @@ import { renderCodeSlide } from './code.js';
 import { renderQuoteSlide } from './quote.js';
 import { renderClosingSlide } from './closing.js';
 import { renderImageSlide } from './image-pages.js';
-import { extraString, layoutSpec, resolveSideMargins, specNumber } from './layout-spec.js';
+import { extraNumber, extraString, layoutSpec, resolveSideMargins, specNumber } from './layout-spec.js';
 
 /** Context passed to layout renderers for async operations */
 export interface RenderContext {
@@ -28,6 +28,11 @@ export interface RenderContext {
   totalSlides?: number;
   /** Title of the most recent section layout slide ({section} placeholder) */
   currentSection?: string;
+  /**
+   * Auto-incrementing section number, started at 1 and incremented once per
+   * section layout slide. Formatted by section renderers (minimal → "01").
+   */
+  sectionNumber?: number;
 }
 
 /**
@@ -57,7 +62,7 @@ export async function renderSlideLayout(
       break;
 
     case 'section':
-      renderSectionSlide(slide, node, theme);
+      renderSectionSlide(slide, node, theme, ctx);
       break;
 
     case 'code':
@@ -95,8 +100,15 @@ export async function renderSlideLayout(
     slide.addNotes(node.notes);
   }
 
-  // Footer / page number (skip cover, closing, blank)
-  if (node.layout !== 'title' && node.layout !== 'closing' && node.layout !== 'blank') {
+  // Footer / page number (skip cover, closing, blank, and section pages that opt out)
+  const sectionSpec = layoutSpec(theme, 'section');
+  const sectionNoFooter = extraString(sectionSpec, 'footer', 'on') === 'off';
+  if (
+    node.layout !== 'title' &&
+    node.layout !== 'closing' &&
+    node.layout !== 'blank' &&
+    !(node.layout === 'section' && sectionNoFooter)
+  ) {
     const footerText = renderFooter(node, theme, ctx);
     const footerSpec = layoutSpec(theme, 'footer');
     const sides = resolveSideMargins(
@@ -129,7 +141,7 @@ export async function renderSlideLayout(
     if (showDivider) {
       slide.addShape('rect' as PptxGenJS.ShapeType, {
         x: marginLeft,
-        y: 7.08,
+        y: extraNumber(footerSpec, 'dividerY', 7.08),
         w: contentW,
         h: 0.015,
         fill: { color: theme.colors.divider ?? theme.colors.secondary },
@@ -139,7 +151,7 @@ export async function renderSlideLayout(
     if (footerText) {
       slide.addText(footerText, {
         x: marginLeft,
-        y: 7.16,
+        y: extraNumber(footerSpec, 'footerY', 7.16),
         w: contentW,
         h: 0.28,
         fontSize: theme.fontSize.small - 1,

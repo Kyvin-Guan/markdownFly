@@ -1,4 +1,5 @@
 import type { Theme } from '../models/theme.js';
+import type { ColorScheme } from '../models/color-scheme.js';
 import type { LayoutScheme } from '../models/layout-scheme.js';
 import type { TextScheme } from '../models/text-set.js';
 import type { ThemePreset } from '../models/theme-preset.js';
@@ -13,6 +14,8 @@ import { resolveThemePresetOption } from './from-scheme.js';
 export const DEFAULT_SCHEME_NAME = 'ocean';
 
 export interface GetThemeOptions {
+  /** Color scheme name or resolved ColorScheme (overrides preset slot) */
+  colorScheme?: string | ColorScheme;
   /** Text scheme name or resolved TextScheme (overrides preset slot) */
   textScheme?: string | TextScheme;
   /** Layout scheme name or resolved LayoutScheme (overrides preset slot) */
@@ -75,6 +78,7 @@ export function getTheme(name?: string, options: GetThemeOptions = {}): Theme {
     }
 
     return createThemeFromScheme(getColorScheme(preset.colorScheme)!, {
+      colorScheme: options.colorScheme,
       textScheme: options.textScheme ?? preset.textScheme,
       layoutScheme: options.layoutScheme ?? preset.layoutScheme,
       presetSet: preset.name,
@@ -85,6 +89,7 @@ export function getTheme(name?: string, options: GetThemeOptions = {}): Theme {
     // unknown name but options.preset provided
     console.warn(`Theme "${name}" not found, using preset "${explicitPreset.name}"`);
     return createThemeFromScheme(getColorScheme(explicitPreset.colorScheme)!, {
+      colorScheme: options.colorScheme,
       textScheme: options.textScheme ?? explicitPreset.textScheme,
       layoutScheme: options.layoutScheme ?? explicitPreset.layoutScheme,
       presetSet: explicitPreset.name,
@@ -95,6 +100,7 @@ export function getTheme(name?: string, options: GetThemeOptions = {}): Theme {
   const colorName =
     resolved.kind === 'color' ? resolved.colorName : explicitPreset!.colorScheme;
   return createThemeFromScheme(getColorScheme(colorName)!, {
+    colorScheme: options.colorScheme,
     textScheme: options.textScheme ?? explicitPreset?.textScheme,
     layoutScheme: options.layoutScheme ?? explicitPreset?.layoutScheme,
     presetSet: explicitPreset?.name,
@@ -168,6 +174,9 @@ export {
   themePresetNames,
   hasThemePreset,
   bluePreset,
+  emeraldPreset,
+  goldPreset,
+  slatePreset,
 } from './presets/index.js';
 export { DEFAULT_THEME_NAME, DEFAULT_PRESET_NAME } from '../models/theme-preset.js';
 export type { ThemePreset } from '../models/theme-preset.js';

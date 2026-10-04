@@ -125,6 +125,48 @@ describe('mfly CLI contract', () => {
     expect(res.stdout).toContain('Done in');
   });
 
+  it('accepts free-composition flags and converts the deck', () => {
+    const res = runCli(
+      ['-t', 'blue', '--color', 'forest', '--text', 'kai', '--layout', 'golden', 'slides.md'],
+      tmpDir,
+    );
+
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('Done in');
+  });
+
+  it('rejects an unknown --color with exit 1', () => {
+    const res = runCli(['--color', 'bogus', 'slides.md'], tmpDir);
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown color scheme "bogus"');
+    expect(res.stdout).toBe('');
+  });
+
+  it('rejects an unknown --text with exit 1', () => {
+    const res = runCli(['--text', 'bogus', 'slides.md'], tmpDir);
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown text scheme "bogus"');
+    expect(res.stdout).toBe('');
+  });
+
+  it('rejects an unknown --layout with exit 1', () => {
+    const res = runCli(['--layout', 'bogus', 'slides.md'], tmpDir);
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown layout scheme "bogus"');
+    expect(res.stdout).toBe('');
+  });
+
+  it('respects frontmatter color_scheme when it reaches getTheme (unknown warns)', () => {
+    writeFileSync(join(tmpDir, 'fmc.md'), '---\ncolor_scheme: nope\n---\n# C\n\nContent.\n');
+    const res = runCli(['fmc.md'], tmpDir);
+
+    expect(res.status).toBe(0);
+    expect(res.stderr).toContain('Color scheme "nope" not found');
+  });
+
   it('respects frontmatter theme when -t is omitted (unknown name warns and falls back)', () => {
     writeFileSync(join(tmpDir, 'fm.md'), '---\ntheme: nope\n---\n# FM\n\nContent.\n');
     const res = runCli(['fm.md'], tmpDir);

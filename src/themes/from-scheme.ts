@@ -10,6 +10,7 @@
 
 import type { ColorScheme } from '../models/color-scheme.js';
 import { resolveSchemeMode } from '../models/color-scheme.js';
+import { getColorScheme } from './color-schemes/index.js';
 import type { LayoutScheme } from '../models/layout-scheme.js';
 import type { Theme, ThemeFonts, ThemeFontSizes, ThemeLayouts, ThemeStyles } from '../models/theme.js';
 import type { ThemePreset } from '../models/theme-preset.js';
@@ -32,6 +33,8 @@ export interface ThemeFromSchemeOptions {
   styles?: Theme['styles'];
   typography?: Theme['typography'];
   avoid?: string[];
+  /** Color scheme name or object; defaults to the `scheme` argument */
+  colorScheme?: string | ColorScheme;
   /** Text scheme name or object; defaults to `system` */
   textScheme?: string | TextScheme;
   /** Layout scheme name or object; omitted → layouts/styles stay unset (legacy) */
@@ -54,6 +57,20 @@ export function resolveThemePresetOption(
     return undefined;
   }
   return preset;
+}
+
+export function resolveColorSchemeOption(
+  input?: string | ColorScheme,
+): ColorScheme | undefined {
+  if (input && typeof input === 'object') return input;
+  if (typeof input !== 'string' || !input.trim()) return undefined;
+  const name = input.trim();
+  const scheme = getColorScheme(name);
+  if (!scheme) {
+    console.warn(`Color scheme "${name}" not found`);
+    return undefined;
+  }
+  return scheme;
 }
 
 export function resolveTextSchemeOption(
@@ -146,6 +163,7 @@ export function createThemeFromScheme(
   scheme: ColorScheme,
   options: ThemeFromSchemeOptions = {},
 ): Theme {
+  const colorScheme = resolveColorSchemeOption(options.colorScheme) ?? scheme;
   const textScheme = resolveTextSchemeOption(options.textScheme);
 
   const fonts = options.fonts ?? bridgeFontsFromTextScheme(textScheme);
@@ -154,12 +172,12 @@ export function createThemeFromScheme(
 
   return {
     name: scheme.name,
-    colors: resolveColorScheme(scheme),
+    colors: resolveColorScheme(colorScheme),
     fonts,
     fontSize,
     shikiTheme:
       options.shikiTheme ??
-      (resolveSchemeMode(scheme) === 'dark' ? 'github-dark' : 'github-light'),
+      (resolveSchemeMode(colorScheme) === 'dark' ? 'github-dark' : 'github-light'),
     layouts: options.layouts ?? fromLayout.layouts,
     styles: options.styles ?? fromLayout.styles,
     typography: options.typography,

@@ -18,3 +18,6 @@ scratch-*.svg
 
 # 本地改进想法和施工日记（不进 git）
 note/
+
+# 内部技术分享文稿（不属于项目内容）
+rag-deep-dive.md

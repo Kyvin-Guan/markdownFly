@@ -17,9 +17,11 @@ export interface ConvertOptions {
    * ThemePreset first (e.g. 'blue'), then ColorScheme (e.g. 'ocean').
    */
   theme?: string;
-  /** TextScheme override (API-only; CLI flag deferred) */
+  /** ColorScheme override (CLI `--color` / frontmatter `color_scheme`) */
+  colorScheme?: string;
+  /** TextScheme override (CLI `--text` / frontmatter `text_scheme`) */
   textScheme?: string;
-  /** LayoutScheme override (API-only; CLI flag deferred) */
+  /** LayoutScheme override (CLI `--layout` / frontmatter `layout_scheme`) */
   layoutScheme?: string;
 }
 
@@ -34,13 +36,14 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   // Parse
   const presentation = parseMarkdown(markdown);
 
-  // CLI/API theme overrides frontmatter; omitted → default theme (blue)
-  if (options.theme) presentation.config.theme = options.theme;
+  // Theme + slot overrides come from frontmatter as base, CLI/API wins.
+  // Slots: explicit CLI/API > frontmatter > theme preset slots (> default).
+  const baseTheme = options.theme ?? presentation.config.theme;
+  const colorScheme = options.colorScheme ?? presentation.config.colorScheme;
+  const textScheme = options.textScheme ?? presentation.config.textScheme;
+  const layoutScheme = options.layoutScheme ?? presentation.config.layoutScheme;
 
-  const theme = getTheme(presentation.config.theme, {
-    textScheme: options.textScheme,
-    layoutScheme: options.layoutScheme,
-  });
+  const theme = getTheme(baseTheme, { colorScheme, textScheme, layoutScheme });
 
   // Determine output path
   const outputPath = resolve(getOutputPath(absInput, options.output));

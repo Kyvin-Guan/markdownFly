@@ -74,10 +74,24 @@ describe('theme-presets folder ↔ registry consistency', () => {
     }
   });
 
-  it('ships only the user-specified blue preset', () => {
-    expect(listThemePresets().map((p) => p.name)).toEqual(['blue']);
+  it('ships the four user-specified presets', () => {
+    expect(listThemePresets().map((p) => p.name)).toEqual([
+      'blue',
+      'emerald',
+      'gold',
+      'slate',
+    ]);
     expect(themePresets.blue.colorScheme).toBe('ocean');
     expect(themePresets.blue.textScheme).toBe('academic');
     expect(themePresets.blue.layoutScheme).toBe('legacy');
+    expect(themePresets.emerald.colorScheme).toBe('forest');
+    expect(themePresets.emerald.textScheme).toBe('system');
+    expect(themePresets.emerald.layoutScheme).toBe('folio');
+    expect(themePresets.gold.colorScheme).toBe('champagne');
+    expect(themePresets.gold.textScheme).toBe('kai');
+    expect(themePresets.gold.layoutScheme).toBe('golden');
+    expect(themePresets.slate.colorScheme).toBe('graphite');
+    expect(themePresets.slate.textScheme).toBe('source-han-serif');
+    expect(themePresets.slate.layoutScheme).toBe('minimal');
   });
 });

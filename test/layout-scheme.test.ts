@@ -9,11 +9,18 @@ import {
 } from '../src/themes/layout-schemes/index.js';
 
 describe('LayoutScheme mechanism', () => {
-  it('registers folio and legacy as built-in schemes', () => {
+  it('registers folio, legacy, and golden as built-in schemes', () => {
     expect(DEFAULT_LAYOUT_SCHEME_NAME).toBe('folio');
     expect(getLayoutScheme('folio')).toBeDefined();
     expect(getLayoutScheme('legacy')).toBeDefined();
-    expect(listLayoutSchemes().map((s) => s.name).sort()).toEqual(['folio', 'legacy']);
+    expect(getLayoutScheme('golden')).toBeDefined();
+    expect(getLayoutScheme('minimal')).toBeDefined();
+    expect(listLayoutSchemes().map((s) => s.name).sort()).toEqual([
+      'folio',
+      'golden',
+      'legacy',
+      'minimal',
+    ]);
   });
 
   it('legacy freezes the old production placement', () => {

@@ -96,16 +96,33 @@ pnpm link --global
 # Convert a single file (named after the input: slides.md → slides.pptx)
 mfly slides.md
 
-# Specify theme (blue, ocean, ocean-dark)
+# Specify theme — presets: blue, emerald, gold, slate; color-only: ocean, ocean-dark, forest, champagne, graphite
 mfly slides.md -t blue
+mfly slides.md -t emerald
 mfly slides.md -t ocean-dark
 
 # Specify custom output path
 mfly slides.md -t blue -o presentation.pptx
 
+# Free composition (optional advanced): override color / text / layout slots
+mfly slides.md -t blue --text kai        # blue palette+layout, swap text to kai
+mfly slides.md --color forest --text academic --layout golden  # full custom mix
+mfly slides.md --layout minimal          # only the layout, rest default theme blue
+
 # Batch convert multiple Markdown files
 mfly docs/*.md
 ```
+
+Composition flags:
+
+- `--color <name>` color scheme: `ocean, ocean-dark, forest, champagne, graphite`
+- `--text <name>` text scheme: `system, academic, kai, source-han-serif`
+- `--layout <name>` layout scheme: `legacy, folio, golden, minimal`
+
+A composition flag **precisely overrides** the matching theme slot
+(precedence: composition > theme preset > default). When composition flags are
+given without `-t`, the default theme `blue` is used as the base. An unknown
+composition name fails with exit `1` and lists the available names.
 
 If the default output name already exists, a timestamped name is used
 (`slides-20260907-131500.pptx`) instead of overwriting. With `-o` the target
@@ -140,11 +157,19 @@ mfly docs/*.md --quiet
 | Theme name | Kind | Color | Text | Layout | Best For |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`blue`** *(default)* | Preset package | `ocean` | `academic` (SimSun) | `legacy` | Default full theme |
+| `emerald` | Preset package | `forest` | `system` (Microsoft YaHei) | `folio` | Fresh green · editorial layout |
+| `gold` | Preset package | `champagne` | `kai` (KaiTi) | `golden` | Warm gold · golden-ratio layout |
+| `slate` | Preset package | `graphite` | `source-han-serif` (Source Han Serif) | `minimal` | Neutral monochrome · archival layout |
 | `ocean` | Color only | Deep sea ink `#1E4A6F` / Sea-foam paper `#F0F8FF`; primary `#4F9FD9` / secondary `#2D6A9F` | Default `system` | Layout pack off | Recolor only |
-| `ocean-dark` | Color only | Light foam `#D6E7F5` / Deep sea `#0B1C2E`; primary `#5BAAE8` / secondary `#8BBCDD` | Default `system` | Layout pack off | Night / dark decks |
+| `ocean-dark` | Color only | Light foam `#D6E7F5` / Deep sea `#0B1C2E`; primary `#5BAAE8` / secondary `#8BBCDD` | Default `system` | Layout pack off | Night / dark decks (inverse of `ocean`) |
+| `forest` | Color only | Deep green ink `#2A4A3F` / Pale green paper `#F0FFF5`; primary `#5F9A8A` / secondary `#3F6A5A` | Default `system` | Layout pack off | Fresh green decks |
+| `champagne` | Color only | Dark gold ink `#CFB53B` / Cream paper `#FFFCE6`; primary `#E5CD5F` / secondary `#F5E08A` | Default `system` | Layout pack off | Warm metallic gold decks |
+| `graphite` | Color only | Dark gray ink `#4D4D4D` / Light gray paper `#F8F8F8`; primary `#D9D9D9` / secondary `#A6A6A6` | Default `system` | Layout pack off | Neutral monochrome decks |
 
 - Omitting `-t` / `theme` uses the default theme **`blue`**.
 - A theme preset selects color × text × layout in one name; color-scheme names remain valid for recolor-only use.
+- `ocean-dark` is the inverse of `ocean` (same color family), sharing its default text/layout; not listed as a separate preset.
+- **Free composition**: override the theme's color / text / layout slots individually via `--color` / `--text` / `--layout` (or frontmatter `color_scheme` / `text_scheme` / `layout_scheme`).
 - Extend via library APIs `registerThemePreset` / `registerColorScheme` / `registerTextScheme` / `registerLayoutScheme`.
 
 ---
@@ -161,7 +186,10 @@ mfly docs/*.md --quiet
 
 ```yaml
 ---
-theme: blue # Options: blue (default preset), ocean, ocean-dark
+theme: blue # Options: blue (default), emerald, gold, slate, ocean, ocean-dark, forest, champagne, graphite
+color_scheme: champagne # Optional: color scheme overriding the theme's color (ocean, forest, champagne, graphite...)
+text_scheme: kai # Optional: text scheme overriding the theme's text (system, academic, kai, source-han-serif)
+layout_scheme: folio # Optional: layout scheme overriding the theme's layout (legacy, folio, golden, minimal)
 author: "Your Name"
 footer: "Confidential - {page} / {total}" # {page}/{total}/{section}/{title}
 resource_dir: ./assets # Base directory for relative image paths

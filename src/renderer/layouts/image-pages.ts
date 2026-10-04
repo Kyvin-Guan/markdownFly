@@ -14,6 +14,7 @@ import { log } from '../../utils/progress.js';
 import {
   addHRuler,
   extraBoolean,
+  extraNumber,
   layoutSpec,
   resolveSideMargins,
   ruleColor,
@@ -117,26 +118,34 @@ export async function renderImageSlide(
   slots: ImageSlots,
 ): Promise<void> {
   const spec = specFor(theme, slots);
+
+  // minimal 图文页：页标题 + 短横线 + 虚线图片占位框 + 页脚
+  if (extraBoolean(spec, 'minimalImage', false)) {
+    await renderMinimalImage(slide, node, theme, ctx, slots, spec);
+    return;
+  }
+
   const { left, right } = resolveSideMargins(spec, 0.6);
   const titleH = specNumber(spec.titleHeight, 0.9);
   const titleAlign = specAlign(spec.titleAlign, 'left');
   const contentW = Math.max(2, SLIDE_W - left - right);
 
-  let top = 0.3;
+  let top = extraNumber(spec, 'titleY', 0.3);
   if (node.title) {
     if (extraBoolean(spec, 'titleRule', true)) {
       const rh = titleRuleHeight(spec, 0.04);
+      const ruleW = extraNumber(spec, 'titleRuleWidth', contentW);
       addHRuler(slide, {
         x: left,
-        y: 0.3 + titleH - rh - 0.01,
-        w: contentW,
+        y: top + titleH - rh - 0.01,
+        w: ruleW,
         h: rh,
         color: ruleColor(theme, titleRuleRole(spec)),
       });
     }
     slide.addText(node.title, {
       x: left,
-      y: 0.3,
+      y: top,
       w: contentW,
       h: titleH,
       fontSize: theme.fontSize.heading,
@@ -146,7 +155,7 @@ export async function renderImageSlide(
       align: titleAlign === 'center' ? 'center' : 'left',
       valign: 'bottom',
     });
-    top = 0.3 + titleH + 0.2;
+    top = top + titleH + 0.2;
   }
 
   const bottom = 0.45;
@@ -195,6 +204,83 @@ export async function renderImageSlide(
         color: theme.colors.secondary,
         align: 'center',
         valign: 'top',
+      });
+    }
+  }
+}
+
+/**
+ * minimal 图文页：页标题 + 短横线，下方为虚线图片占位框（等宽并排），
+ * 有真实图片时嵌入框内，否则展示占位提示文字。底部统一页脚。
+ */
+async function renderMinimalImage(
+  slide: PptxGenJS.Slide,
+  node: SlideNode,
+  theme: Theme,
+  ctx: RenderContext,
+  slots: ImageSlots,
+  spec: ThemeLayoutSpec,
+): Promise<void> {
+  const margin = specNumber(spec.margin, 0.83);
+  const boxX = margin;
+  const boxY = extraNumber(spec, 'minimalImageY', 1.33);
+  const boxH = extraNumber(spec, 'minimalImageH', 5.28);
+  const contentW = 13.33 - margin * 2;
+  const lineColor = theme.colors.divider ?? theme.colors.secondary;
+
+  if (node.title) {
+    slide.addText(node.title, {
+      x: boxX,
+      y: extraNumber(spec, 'minimalTitleY', 0.5),
+      w: contentW,
+      h: 0.44,
+      fontSize: theme.fontSize.heading,
+      fontFace: theme.fonts.heading,
+      color: theme.colors.primary,
+      bold: true,
+      align: 'left',
+      valign: 'middle',
+    });
+    addHRuler(slide, {
+      x: boxX,
+      y: extraNumber(spec, 'minimalTitleRuleY', 1.03),
+      w: extraNumber(spec, 'minimalTitleRuleW', 0.56),
+      h: extraNumber(spec, 'minimalTitleRuleH', 0.03),
+      color: lineColor,
+    });
+  }
+
+  // 每个槽位的占位框宽度（等宽并排）
+  const gaps: Record<ImageSlots, number> = { 1: 0, 2: 0.28, 3: 0.21 };
+  const gap = gaps[slots];
+  const cellW = (contentW - gap * (slots - 1)) / slots;
+
+  const { images } = pickImages(node, slots);
+  for (let i = 0; i < slots; i++) {
+    const x = boxX + i * (cellW + gap);
+    // 虚线图片占位框
+    slide.addShape('rect' as PptxGenJS.ShapeType, {
+      x,
+      y: boxY,
+      w: cellW,
+      h: boxH,
+      fill: { transparency: 100 },
+      line: { color: lineColor, width: 0.01, dashType: 'dash' },
+    });
+    if (images[i]) {
+      await placeImage(slide, images[i], { x, y: boxY, w: cellW, h: boxH }, node, ctx);
+    } else {
+      // 无图时的占位提示文字（框内水平垂直居中）
+      slide.addText('Image', {
+        x: x + (cellW - 2.22) / 2,
+        y: boxY + (boxH - 0.56) / 2,
+        w: 2.22,
+        h: 0.56,
+        fontSize: theme.fontSize.small,
+        fontFace: theme.fonts.body,
+        color: lineColor,
+        align: 'center',
+        valign: 'middle',
       });
     }
   }

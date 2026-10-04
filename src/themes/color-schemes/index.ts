@@ -13,11 +13,17 @@
 import type { ColorScheme } from '../../models/color-scheme.js';
 import { oceanScheme } from './ocean.js';
 import { oceanDarkScheme } from './ocean-dark.js';
+import { forestScheme } from './forest.js';
+import { champagneScheme } from './champagne.js';
+import { graphiteScheme } from './graphite.js';
 
 /** All built-in schemes. Keep in sync with *.ts files in this folder. */
 const builtInSchemes: ColorScheme[] = 
   [ oceanScheme, 
-    oceanDarkScheme
+    oceanDarkScheme, 
+    forestScheme,
+    champagneScheme,
+    graphiteScheme
 ];
 
 export const colorSchemes: Record<string, ColorScheme> = Object.fromEntries(
@@ -37,4 +43,4 @@ export function registerColorScheme(scheme: ColorScheme): void {
   colorSchemes[scheme.name.toLowerCase()] = scheme;
 }
 
-export { oceanScheme, oceanDarkScheme };
+export { oceanScheme, oceanDarkScheme, forestScheme, champagneScheme, graphiteScheme };
