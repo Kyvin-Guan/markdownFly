@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Resvg } from '@resvg/resvg-js';
 import { getImageSize } from '../src/utils/image-size.js';
 import { renderDiagram } from '../src/diagrams/index.js';
-import { cleanTheme } from '../src/themes/index.js';
+import { getTheme } from '../src/themes/index.js';
 
 // Capturing the SVG on its way to the rasterizer lets every case be checked
 // against the geometry resvg actually measures in that SVG, so no expectation
@@ -72,7 +72,7 @@ interface Measured {
 
 async function measure(language: string, code: string): Promise<Measured> {
   captured.length = 0;
-  const png = getImageSize(await renderDiagram(language, code, cleanTheme));
+  const png = getImageSize(await renderDiagram(language, code, getTheme('ocean')));
   expect(png, 'rendered buffer should be a readable image').not.toBeNull();
 
   const svg = captured[captured.length - 1];
@@ -127,7 +127,7 @@ describe('degenerate frames', () => {
     // jsdom reports offsetWidth as 0 rather than undefined, which defeated
     // mermaid's own fallback and produced `viewBox="0 0 0 148"`.
     captured.length = 0;
-    await renderDiagram('mermaid', GANTT, cleanTheme);
+    await renderDiagram('mermaid', GANTT, getTheme('ocean'));
     const viewBox = captured[captured.length - 1]
       .match(/viewBox="([^"]+)"/)![1]
       .split(/[\s,]+/)

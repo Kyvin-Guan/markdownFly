@@ -1,5 +1,5 @@
 ---
-theme: clean
+theme: ocean
 author: "MarkdownFly"
 footer: "MarkdownFly 全特性演示 · {section} · {page} / {total}"
 resource_dir: test/fixtures

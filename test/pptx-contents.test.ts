@@ -335,10 +335,12 @@ describe('element heights fit their content', () => {
     );
 
     const out = join(tmpDir, 'code.pptx');
-    await convert(join(tmpDir, 'code.md'), { output: out, theme: 'clean' });
+    // ocean-dark keeps a dark code panel, which is the fill the lines sit on.
+    const { getTheme } = await import('../src/themes/index.js');
+    const codeBg = getTheme('ocean-dark').colors.codeBackground;
+    await convert(join(tmpDir, 'code.md'), { output: out, theme: 'ocean-dark' });
 
-    // clean's codeBackground — the dark fill the lines have to fit inside.
-    const blocks = shapesFilledWith(await allSlideXml(out), '1E293B');
+    const blocks = shapesFilledWith(await allSlideXml(out), codeBg);
     expect(blocks).toHaveLength(1);
 
     // 6 lines at 14pt: 6 * 14 * 1.3 / 72 = 1.52in of text, plus 16pt insets.
@@ -357,7 +359,7 @@ describe('element heights fit their content', () => {
     );
 
     const out = join(tmpDir, 'overlap.pptx');
-    await convert(join(tmpDir, 'overlap.md'), { output: out, theme: 'clean' });
+    await convert(join(tmpDir, 'overlap.md'), { output: out, theme: 'ocean' });
 
     const xml = await allSlideXml(out);
     const picture = pictures(xml);

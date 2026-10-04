@@ -14,7 +14,10 @@ export type SlideLayout =
   | 'code'
   | 'quote'
   | 'blank'
-  | 'closing';
+  | 'closing'
+  | 'image-single'
+  | 'image-double'
+  | 'image-triple';
 
 /** A layout marker inside a slide: starts a new row (===) or column (<->) */
 export interface BreakElement {

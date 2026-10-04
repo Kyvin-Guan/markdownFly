@@ -14,7 +14,7 @@ describe('E2E New Syntax', () => {
 
     const result = await convert(fixture, {
       output: outputPath,
-      theme: 'clean',
+      theme: 'ocean',
     });
 
     expect(result).toBe(outputPath);

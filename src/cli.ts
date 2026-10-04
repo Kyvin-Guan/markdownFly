@@ -1,6 +1,17 @@
 /**
  * MarkdownFly CLI
- * Usage: mfly <files...> [-o output.pptx] [-t theme] [--quiet|--json]
+ * Usage: mfly <files...> [-o output.pptx] [-t theme] [--color c] [--text t]
+ *        [--layout l] [--quiet|--json]
+ *
+ * `-t` is the user-facing theme name:
+ *   - ThemePreset (e.g. blue) — color × text × layout
+ *   - ColorScheme (e.g. ocean, ocean-dark) — color only
+ * Default theme when omitted: blue
+ *
+ * Free composition (each optional and overrides the theme's slot):
+ *   --color <name>   color scheme override
+ *   --text <name>    text / font scheme override
+ *   --layout <name>  layout scheme override
  */
 
 import { Command } from 'commander';
@@ -9,7 +20,16 @@ import { readFileSync } from 'node:fs';
 import { convert } from './index.js';
 import { expandGlob } from './utils/glob.js';
 import { ProgressReporter, log, setQuiet } from './utils/progress.js';
-import { themes } from './themes/index.js';
+import {
+  hasTheme,
+  themeNames,
+  getColorScheme,
+  getTextScheme,
+  getLayoutScheme,
+  listColorSchemes,
+  listTextSchemes,
+  listLayoutSchemes,
+} from './themes/index.js';
 
 const pkg = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
@@ -22,18 +42,39 @@ program
   .description('Markdown to PowerPoint (PPTX)')
   .version(pkg.version ?? '0.0.0');
 
-const themeChoices = Object.keys(themes).filter((name) => name !== 'default');
+const themeChoices = themeNames();
+
+const colorChoices = listColorSchemes()
+  .map((s) => s.name)
+  .join(', ');
+const textChoices = listTextSchemes()
+  .map((s) => s.name)
+  .join(', ');
+const layoutChoices = listLayoutSchemes()
+  .map((s) => s.name)
+  .join(', ');
 
 // Main convert command
 program
   .argument('<files...>', 'Markdown files to convert (supports glob)')
   .option('-o, --output <path>', 'Output file path (single file only)')
   .option('-t, --theme <name>', `Theme name (${themeChoices.join(', ')})`)
+  .option('--color <name>', `Color scheme override (${colorChoices})`)
+  .option('--text <name>', `Text scheme override (${textChoices})`)
+  .option('--layout <name>', `Layout scheme override (${layoutChoices})`)
   .option('--quiet', 'Suppress per-file progress output')
   .option('--json', 'Print machine-readable JSON result to stdout')
   .action(async (
     filePatterns: string[],
-    options: { output?: string; theme: string; quiet?: boolean; json?: boolean },
+    options: {
+      output?: string;
+      theme: string;
+      color?: string;
+      text?: string;
+      layout?: string;
+      quiet?: boolean;
+      json?: boolean;
+    },
   ) => {
     const jsonMode = Boolean(options.json);
     if (jsonMode || options.quiet) setQuiet(true);
@@ -56,9 +97,20 @@ program
       }
 
       // Strict theme validation. When -t is omitted, the theme comes from
-      // frontmatter (unknown frontmatter themes fall back to clean with a warning).
-      if (options.theme && !themes[options.theme.toLowerCase()]) {
+      // frontmatter or the default theme (blue).
+      if (options.theme && !hasTheme(options.theme)) {
         usageError(`Unknown theme "${options.theme}". Available themes: ${themeChoices.join(', ')}`);
+      }
+
+      // Strict slot validation for the free-composition flags.
+      if (options.color && !getColorScheme(options.color)) {
+        usageError(`Unknown color scheme "${options.color}". Available: ${colorChoices}`);
+      }
+      if (options.text && !getTextScheme(options.text)) {
+        usageError(`Unknown text scheme "${options.text}". Available: ${textChoices}`);
+      }
+      if (options.layout && !getLayoutScheme(options.layout)) {
+        usageError(`Unknown layout scheme "${options.layout}". Available: ${layoutChoices}`);
       }
 
       const startTime = Date.now();
@@ -74,6 +126,9 @@ program
           const outputPath = await convert(file, {
             output: options.output,
             theme: options.theme,
+            colorScheme: options.color,
+            textScheme: options.text,
+            layoutScheme: options.layout,
           });
 
           const outName = outputPath.split(/[\\/]/).pop() ?? outputPath;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderDiagram } from '../src/diagrams/index.js';
 import { getImageSize } from '../src/utils/image-size.js';
-import { cleanTheme } from '../src/themes/index.js';
+import { getTheme } from '../src/themes/index.js';
 
 const captured = vi.hoisted(() => [] as string[]);
 const stripInputMarkers = vi.hoisted(() => ({ value: false }));
@@ -74,10 +74,10 @@ const BLOCK = `block-beta
 /** Render a diagram, then render it again with the marker defs removed. */
 async function renderWithAndWithoutMarkers(code: string): Promise<[Buffer, Buffer]> {
   stripInputMarkers.value = false;
-  const withMarkers = await renderDiagram('mermaid', code, cleanTheme);
+  const withMarkers = await renderDiagram('mermaid', code, getTheme('ocean'));
 
   stripInputMarkers.value = true;
-  const withoutMarkers = await renderDiagram('mermaid', code, cleanTheme);
+  const withoutMarkers = await renderDiagram('mermaid', code, getTheme('ocean'));
 
   stripInputMarkers.value = false;
   return [withMarkers, withoutMarkers];
@@ -112,7 +112,7 @@ describe('mermaid node geometry', () => {
     // A fabricated SVGRect used to defeat mermaid's text-anchor compensation,
     // leaving shape labels (e.g. the cylinder's) offset to the side.
     captured.length = 0;
-    await renderDiagram('mermaid', FLOWCHART, cleanTheme);
+    await renderDiagram('mermaid', FLOWCHART, getTheme('ocean'));
 
     const offsets = [...captured[captured.length - 1].matchAll(
       /<g class="label"[^>]*transform="translate\(([-\d.]+)/g,
@@ -126,7 +126,7 @@ describe('mermaid node geometry', () => {
     // Guards the deliberate scope of the node measurement: widening it to every
     // group re-flows block-beta into a tall column (aspect ~0.87). A 3-column,
     // 2-row block diagram has to stay wider than it is tall.
-    const png = getImageSize(await renderDiagram('mermaid', BLOCK, cleanTheme))!;
+    const png = getImageSize(await renderDiagram('mermaid', BLOCK, getTheme('ocean')))!;
     expect(png.width / png.height).toBeGreaterThan(2);
   }, 60000);
 });
@@ -135,7 +135,7 @@ describe('mermaid diagram types that used to fail', () => {
   it('renders a mindmap', async () => {
     // Used to throw "Cannot read properties of undefined (reading 'h')": jsdom
     // reports unset CSS padding as "", so cytoscape's container size became NaN.
-    const png = getImageSize(await renderDiagram('mermaid', MINDMAP, cleanTheme));
+    const png = getImageSize(await renderDiagram('mermaid', MINDMAP, getTheme('ocean')));
     expect(png).not.toBeNull();
     expect(png!.width).toBeGreaterThan(0);
   }, 60000);

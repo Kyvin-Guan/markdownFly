@@ -1,5 +1,5 @@
 ---
-theme: clean
+theme: ocean
 author: "MarkdownFly"
 footer: "MarkdownFly 语法演示 · {page} / {total}"
 ---

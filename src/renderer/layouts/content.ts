@@ -16,15 +16,63 @@ import { fitInBox, fitImageWithOptions } from '../../utils/image-fit.js';
 import { tableToChartOption } from '../../utils/table-chart.js';
 import { log } from '../../utils/progress.js';
 import { readFileSync } from 'node:fs';
+import {
+  addHRuler,
+  extraBoolean,
+  extraNumber,
+  layoutSpec,
+  resolveSideMargins,
+  ruleColor,
+  specNumber,
+  titleRuleHeight,
+  titleRuleRole,
+} from './layout-spec.js';
 
 // Slide dimensions (16:9 LAYOUT_WIDE)
 const SLIDE_W = 13.33;
 const SLIDE_H = 7.5;
-const MARGIN = 0.6;
-const CONTENT_W = SLIDE_W - MARGIN * 2;
-const TITLE_H = 0.9;
-const BOTTOM_MARGIN = 0.45;
-const GRID_GAP = 0.25;
+/** Fallbacks matching production hard-coded values (layout-scheme legacy) */
+const DEFAULT_MARGIN = 0.6;
+const DEFAULT_TITLE_H = 0.9;
+const DEFAULT_BOTTOM_MARGIN = 0.45;
+const DEFAULT_GRID_GAP = 0.25;
+
+interface ContentMetrics {
+  marginLeft: number;
+  marginRight: number;
+  titleH: number;
+  titleY: number;
+  contentW: number;
+  bottom: number;
+  gridGap: number;
+  contentPadding: number;
+  titleRule: boolean;
+  titleRuleH: number;
+  titleRuleWidth: number;
+  titleRuleColor: 'primary' | 'secondary' | 'divider';
+}
+
+function contentMetrics(theme: Theme): ContentMetrics {
+  const spec = layoutSpec(theme, 'content');
+  const { left, right } = resolveSideMargins(spec, DEFAULT_MARGIN);
+  const titleH = specNumber(spec.titleHeight, DEFAULT_TITLE_H);
+  const contentPadding = specNumber(spec.contentPadding, 0);
+  const contentW = Math.max(2, SLIDE_W - left - right);
+  return {
+    marginLeft: left,
+    marginRight: right,
+    titleH,
+    titleY: extraNumber(spec, 'titleY', 0.3),
+    contentW,
+    bottom: DEFAULT_BOTTOM_MARGIN,
+    gridGap: DEFAULT_GRID_GAP,
+    contentPadding,
+    titleRule: extraBoolean(spec, 'titleRule', true),
+    titleRuleH: titleRuleHeight(spec, 0.04),
+    titleRuleWidth: extraNumber(spec, 'titleRuleWidth', contentW),
+    titleRuleColor: titleRuleRole(spec),
+  };
+}
 
 /** Extension → MIME map used when embedding images as base64 data */
 const IMAGE_MIME: Record<string, string> = {
@@ -38,10 +86,13 @@ const IMAGE_MIME: Record<string, string> = {
 };
 
 /** Vertical space available below the title bar */
-function contentAreaInsets(node: SlideNode): { top: number; bottom: number } {
+function contentAreaInsets(
+  node: SlideNode,
+  metrics: ContentMetrics,
+): { top: number; bottom: number } {
   return {
-    top: node.title ? 0.3 + TITLE_H + 0.2 : 0.3,
-    bottom: BOTTOM_MARGIN,
+    top: node.title ? metrics.titleY + metrics.titleH + 0.2 : metrics.titleY,
+    bottom: metrics.bottom,
   };
 }
 
@@ -86,23 +137,38 @@ export async function renderContentSlide(
   theme: Theme,
   ctx: RenderContext,
 ): Promise<void> {
-  const { top } = contentAreaInsets(node);
+  const spec = layoutSpec(theme, 'content');
 
-  // Title bar
+  // minimal 正文：标题在上、标题下短横线，内容收进带边框容器
+  if (extraBoolean(spec, 'minimalBox', false)) {
+    await renderMinimalContent(slide, node, theme, ctx);
+    return;
+  }
+
+  const metrics = contentMetrics(theme);
+  const { marginLeft, titleH, titleY, contentW, gridGap, contentPadding, titleRuleWidth } = metrics;
+  const { top } = contentAreaInsets(node, metrics);
+  const pad = contentPadding > 0 ? contentPadding : 0;
+  const drawX = marginLeft + pad;
+  const drawW = contentW - pad * 2;
+
+  // Title bar + rule
   if (node.title) {
-    slide.addShape('rect' as PptxGenJS.ShapeType, {
-      x: MARGIN,
-      y: 0.3 + TITLE_H - 0.05,
-      w: CONTENT_W,
-      h: 0.04,
-      fill: { color: theme.colors.primary },
-    });
+    if (metrics.titleRule && metrics.titleRuleH > 0) {
+      addHRuler(slide, {
+        x: marginLeft,
+        y: titleY + titleH - metrics.titleRuleH - 0.01,
+        w: titleRuleWidth,
+        h: metrics.titleRuleH,
+        color: ruleColor(theme, metrics.titleRuleColor),
+      });
+    }
 
     slide.addText(node.title, {
-      x: MARGIN,
-      y: 0.3,
-      w: CONTENT_W,
-      h: TITLE_H,
+      x: marginLeft,
+      y: titleY,
+      w: contentW,
+      h: titleH,
       fontSize: theme.fontSize.heading,
       fontFace: theme.fonts.heading,
       color: theme.colors.primary,
@@ -113,14 +179,14 @@ export async function renderContentSlide(
 
   const grid = splitGrid(prepareElements(node));
   const rows = grid.length;
-  const availH = SLIDE_H - top - BOTTOM_MARGIN - GRID_GAP * (rows - 1);
+  const availH = SLIDE_H - top - metrics.bottom - gridGap * (rows - 1);
 
   // Rows are sized by estimated content weight (like flexbox), not evenly —
   // a row with one short line shouldn't eat half the slide. Shrunk to fit.
   const ests = grid.map((columns) =>
     Math.max(
       0.8,
-      ...columns.map((c) => estimateColumnHeight(c, (CONTENT_W - GRID_GAP * (columns.length - 1)) / columns.length, theme)),
+      ...columns.map((c) => estimateColumnHeight(c, (drawW - gridGap * (columns.length - 1)) / columns.length, theme)),
     ),
   );
   const totalEst = ests.reduce((a, b) => a + b, 0);
@@ -130,20 +196,20 @@ export async function renderContentSlide(
   for (let r = 0; r < rows; r++) {
     const columns = grid[r];
     const cols = columns.length;
-    const colW = (CONTENT_W - GRID_GAP * (cols - 1)) / cols;
+    const colW = (drawW - gridGap * (cols - 1)) / cols;
     const rowH = ests[r] * scale;
 
     for (let c = 0; c < cols; c++) {
       await renderColumn(
         slide,
         columns[c],
-        { x: MARGIN + c * (colW + GRID_GAP), y, w: colW, h: rowH },
+        { x: drawX + c * (colW + gridGap), y, w: colW, h: rowH },
         node,
         theme,
         ctx,
       );
     }
-    y += rowH + GRID_GAP;
+    y += rowH + gridGap;
   }
 }
 
@@ -627,5 +693,98 @@ async function renderElement(
 
     default:
       return 0;
+  }
+}
+
+/**
+ * minimal 正文页：页标题 + 标题下短横线（非贯穿）+ 带边框内容容器。
+ * 内容在容器内部按 grid 布局排布，与方案「内容区起始 y=1.33、底部收于 6.61」一致。
+ */
+async function renderMinimalContent(
+  slide: PptxGenJS.Slide,
+  node: SlideNode,
+  theme: Theme,
+  ctx: RenderContext,
+): Promise<void> {
+  const spec = layoutSpec(theme, 'content');
+  const margin = specNumber(spec.margin, 0.83);
+  const boxX = extraNumber(spec, 'minimalBoxX', margin);
+  const boxY = extraNumber(spec, 'minimalBoxY', 1.33);
+  const boxW = extraNumber(spec, 'minimalBoxW', SLIDE_W - margin * 2);
+  const boxH = extraNumber(spec, 'minimalBoxH', 5.28);
+  const lineColor = theme.colors.divider ?? theme.colors.secondary;
+
+  if (node.title) {
+    slide.addText(node.title, {
+      x: boxX,
+      y: extraNumber(spec, 'minimalTitleY', 0.5),
+      w: boxW,
+      h: 0.44,
+      fontSize: theme.fontSize.heading,
+      fontFace: theme.fonts.heading,
+      color: theme.colors.primary,
+      bold: true,
+      align: 'left',
+      valign: 'middle',
+    });
+    // 标题下装饰短横线（左缘与页标题左缘对齐，长度约 0.56，不贯穿整行）
+    addHRuler(slide, {
+      x: boxX,
+      y: extraNumber(spec, 'minimalTitleRuleY', 1.03),
+      w: extraNumber(spec, 'minimalTitleRuleW', 0.56),
+      h: extraNumber(spec, 'minimalTitleRuleH', 0.03),
+      color: lineColor,
+    });
+  }
+
+  // 内容容器（占位边界，实际填充列表/表格/图表等）
+  slide.addShape('rect' as PptxGenJS.ShapeType, {
+    x: boxX,
+    y: boxY,
+    w: boxW,
+    h: boxH,
+    fill: { transparency: 100 },
+    line: { color: lineColor, width: 0.01 },
+  });
+
+  // 容器内排布内容
+  const gap = 0.25;
+  const pad = 0.3;
+  const inner = { x: boxX + pad, y: boxY + pad, w: boxW - pad * 2, h: boxH - pad * 2 };
+  const innerBox = {
+    x: inner.x,
+    y: inner.y,
+    w: inner.w,
+    h: inner.h,
+  };
+  const grid = splitGrid(prepareElements(node));
+  const rows = grid.length;
+  const availH = innerBox.h - gap * (rows - 1);
+  const ests = grid.map((columns) =>
+    Math.max(
+      0.8,
+      ...columns.map((c) => estimateColumnHeight(c, (innerBox.w - gap * (columns.length - 1)) / columns.length, theme)),
+    ),
+  );
+  const totalEst = ests.reduce((a, b) => a + b, 0);
+  const scale = totalEst > availH ? availH / totalEst : 1;
+
+  let y = innerBox.y;
+  for (let r = 0; r < rows; r++) {
+    const columns = grid[r];
+    const cols = columns.length;
+    const colW = (innerBox.w - gap * (cols - 1)) / cols;
+    const rowH = ests[r] * scale;
+    for (let c = 0; c < cols; c++) {
+      await renderColumn(
+        slide,
+        columns[c],
+        { x: innerBox.x + c * (colW + gap), y, w: colW, h: rowH },
+        node,
+        theme,
+        ctx,
+      );
+    }
+    y += rowH + gap;
   }
 }

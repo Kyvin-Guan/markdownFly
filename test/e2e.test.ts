@@ -28,7 +28,7 @@ describe('E2E Conversion', () => {
 
     const result = await convert('test/fixtures/images.md', {
       output: imageOutputPath,
-      theme: 'clean',
+      theme: 'ocean',
     });
 
     expect(result).toBe(imageOutputPath);

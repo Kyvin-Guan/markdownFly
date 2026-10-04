@@ -352,6 +352,27 @@ function detectLayout(
     return 'quote';
   }
 
+  // Pure image pages (layout-set step 3): 1–3 images, no substantial body.
+  // Existing rules above win; only additive. Mixed / heavy text stays `content`.
+  if (nonEmptyElements.length > 0) {
+    const images = nonEmptyElements.filter((e) => e.type === 'image');
+    const others = nonEmptyElements.filter(
+      (e) => e.type !== 'image' && e.type !== 'text',
+    );
+    const texts = nonEmptyElements.filter((e) => e.type === 'text');
+    const substantialText = texts.some((e) => e.type === 'text' && e.content.trim().length > 40);
+    if (
+      others.length === 0 &&
+      !substantialText &&
+      images.length >= 1 &&
+      images.length <= 3
+    ) {
+      if (images.length === 1) return 'image-single';
+      if (images.length === 2) return 'image-double';
+      return 'image-triple';
+    }
+  }
+
   return 'content';
 }
 
@@ -368,6 +389,9 @@ export function splitIntoSlides(tree: Root, defaultLayout?: string): SlideNode[]
   let currentDirectives: Record<string, string> = {};
   let currentHeadingLevel = 0;
   let isFirstSlide = true;
+  // 封面作者 / 日期：识别 `作者：…` / `日期：…` 前缀段，独立于正文元素存储
+  let currentAuthor: string | undefined;
+  let currentDate: string | undefined;
 
   function flushSlide(): void {
     // Don't create empty slides (but keep slides that carry directives/notes)
@@ -399,6 +423,11 @@ export function splitIntoSlides(tree: Root, defaultLayout?: string): SlideNode[]
       (autoLayout === 'content' ? (defaultLayout as SlideLayout | undefined) : autoLayout) ??
       'content';
 
+    const metadata: SlideNode['metadata'] =
+      currentAuthor || currentDate
+        ? { author: currentAuthor, date: currentDate }
+        : undefined;
+
     slides.push({
       layout,
       title: currentTitle,
@@ -406,6 +435,7 @@ export function splitIntoSlides(tree: Root, defaultLayout?: string): SlideNode[]
       elements: currentElements,
       notes: currentDirectives.notes,
       directives: toDirectives(currentDirectives),
+      ...(metadata ? { metadata } : {}),
     });
 
     currentTitle = undefined;
@@ -413,6 +443,8 @@ export function splitIntoSlides(tree: Root, defaultLayout?: string): SlideNode[]
     currentElements = [];
     currentDirectives = {};
     currentHeadingLevel = 0;
+    currentAuthor = undefined;
+    currentDate = undefined;
     isFirstSlide = false;
   }
 
@@ -446,6 +478,35 @@ export function splitIntoSlides(tree: Root, defaultLayout?: string): SlideNode[]
         }
       }
       continue;
+    }
+
+    // 封面元信息段：仅在首页封面识别「作者：…」/「日期：…」前缀行，
+    // 提取后不入正文元素。允许多行（软换行或空行分隔）；仅当段落由这些
+    // 元信息行构成时才提取，避免吞掉真正的正文。
+    if (node.type === 'paragraph' && isFirstSlide && slides.length === 0) {
+      const lines = node.children.map(extractText).join('').trim().split('\n');
+      let metaAuthor: string | undefined;
+      let metaDate: string | undefined;
+      const metaOnly = lines.every((raw) => {
+        const line = raw.trim();
+        if (!line) return true;
+        const authorMatch = line.match(/^作者\s*[:：]\s*(.+)$/);
+        if (authorMatch) {
+          metaAuthor = authorMatch[1].trim();
+          return true;
+        }
+        const dateMatch = line.match(/^日期\s*[:：]\s*(.+)$/);
+        if (dateMatch) {
+          metaDate = dateMatch[1].trim();
+          return true;
+        }
+        return false;
+      });
+      if (metaOnly && (metaAuthor || metaDate)) {
+        if (metaAuthor) currentAuthor = metaAuthor;
+        if (metaDate) currentDate = metaDate;
+        continue;
+      }
     }
 
     // Other content → add to current slide

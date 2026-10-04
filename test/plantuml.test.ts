@@ -3,7 +3,7 @@ import { renderDiagram, isDiagramLanguage } from '../src/diagrams/index.js';
 import { parseMarkdown } from '../src/parser/index.js';
 import { getImageSize } from '../src/utils/image-size.js';
 import type { DiagramElement } from '../src/models/slide.js';
-import { cleanTheme, darkTheme } from '../src/themes/index.js';
+import { getTheme } from '../src/themes/index.js';
 
 const SEQUENCE = `@startuml
 Alice -> Bob : 登录请求
@@ -66,13 +66,13 @@ describe('PlantUML language recognition', () => {
 
 describe('PlantUML rendering', () => {
   it('renders a sequence diagram to a PNG', async () => {
-    const buffer = await renderDiagram('plantuml', SEQUENCE, cleanTheme);
+    const buffer = await renderDiagram('plantuml', SEQUENCE, getTheme('ocean'));
     expect(buffer.subarray(0, 4)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     expect(getImageSize(buffer)).not.toBeNull();
   }, 60000);
 
   it('renders a class diagram (Graphviz layout path)', async () => {
-    const buffer = await renderDiagram('plantuml', CLASS_DIAGRAM, cleanTheme);
+    const buffer = await renderDiagram('plantuml', CLASS_DIAGRAM, getTheme('ocean'));
     const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     // A two-class inheritance diagram is taller than it is wide but nothing like
@@ -82,12 +82,12 @@ describe('PlantUML rendering', () => {
   }, 60000);
 
   it('renders under a dark theme without losing the diagram', async () => {
-    const buffer = await renderDiagram('plantuml', CLASS_DIAGRAM, darkTheme);
+    const buffer = await renderDiagram('plantuml', CLASS_DIAGRAM, getTheme('ocean-dark'));
     expect(getImageSize(buffer)).not.toBeNull();
   }, 60000);
 
   it('accepts bare source with no @startuml envelope', async () => {
-    const buffer = await renderDiagram('plantuml', 'Alice -> Bob : no envelope', cleanTheme);
+    const buffer = await renderDiagram('plantuml', 'Alice -> Bob : no envelope', getTheme('ocean'));
     expect(getImageSize(buffer)).not.toBeNull();
   }, 60000);
 
@@ -132,7 +132,7 @@ describe('PlantUML rendering', () => {
     const stdout = vi.spyOn(console, 'log').mockImplementation(() => {});
     const stderr = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      await renderDiagram('plantuml', SEQUENCE, cleanTheme);
+      await renderDiagram('plantuml', SEQUENCE, getTheme('ocean'));
       expect(stdout).not.toHaveBeenCalled();
       expect(stderr.mock.calls.flat().join(' ')).not.toMatch(/TimLoader|PSystemBuilder/);
     } finally {
@@ -145,7 +145,7 @@ describe('PlantUML rendering', () => {
     process.env.MFLY_DEBUG = '1';
     const stderr = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      await renderDiagram('plantuml', SEQUENCE, cleanTheme);
+      await renderDiagram('plantuml', SEQUENCE, getTheme('ocean'));
       expect(stderr.mock.calls.flat().join(' ')).toMatch(/TimLoader|PSystemBuilder/);
     } finally {
       stderr.mockRestore();

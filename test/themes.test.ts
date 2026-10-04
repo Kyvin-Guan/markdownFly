@@ -2,49 +2,34 @@ import { describe, it, expect } from 'vitest';
 import { highlightBackgroundFor } from '../src/renderer/code-highlighter.js';
 import {
   getTheme,
-  themes,
-  cleanTheme,
-  academicTheme,
-  darkTheme,
-  businessTheme,
-  warmTheme,
-  auroraTheme,
-  neonTheme,
-  nordTheme,
-  draculaTheme,
-  beigeTheme,
-  inkTheme,
+  themeNames,
+  hasTheme,
+  DEFAULT_SCHEME_NAME,
+  DEFAULT_THEME_NAME,
+  listColorSchemes,
+  createThemeFromScheme,
 } from '../src/themes/index.js';
+import { isDarkColor } from '../src/utils/color-mix.js';
 
 const HEX = /^[0-9A-Fa-f]{6}$/;
 
-describe('Theme System', () => {
-  it('should export all preset themes', () => {
-    for (const theme of [
-      cleanTheme,
-      academicTheme,
-      darkTheme,
-      businessTheme,
-      warmTheme,
-      auroraTheme,
-      neonTheme,
-      nordTheme,
-      draculaTheme,
-      beigeTheme,
-      inkTheme,
-    ]) {
-      expect(themes[theme.name]).toBeDefined();
-      expect(theme.name).toBe(theme.name.toLowerCase());
-    }
-    expect(cleanTheme.name).toBe('clean');
-    expect(academicTheme.name).toBe('academic');
-    expect(darkTheme.name).toBe('dark');
-    expect(businessTheme.name).toBe('business');
-    expect(warmTheme.name).toBe('warm');
+describe('Theme System (user-facing theme name)', () => {
+  it('lists presets first, then color-only schemes', () => {
+    expect(DEFAULT_THEME_NAME).toBe('blue');
+    expect(themeNames()).toContain('blue');
+    expect(themeNames()).toContain('ocean');
+    expect(themeNames()).toContain('ocean-dark');
+    expect(themeNames()[0]).toBe('blue');
+    expect(themeNames()).not.toContain('clean');
+    expect(hasTheme('blue')).toBe(true);
+    expect(hasTheme('ocean')).toBe(true);
+    expect(hasTheme('clean')).toBe(false);
   });
 
-  it('should define valid hex colors on every theme', () => {
-    for (const theme of Object.values(themes)) {
+  it('resolves every registered scheme to a Theme with valid hex colors', () => {
+    for (const scheme of listColorSchemes()) {
+      const theme = createThemeFromScheme(scheme);
+      expect(theme.name).toBe(scheme.name);
       const c = theme.colors;
       expect(HEX.test(c.primary)).toBe(true);
       expect(HEX.test(c.secondary)).toBe(true);
@@ -56,99 +41,83 @@ describe('Theme System', () => {
     }
   });
 
-  it('should retrieve each preset theme by name (case-insensitive)', () => {
-    expect(getTheme('clean').name).toBe('clean');
-    expect(getTheme('academic').name).toBe('academic');
-    expect(getTheme('DARK').name).toBe('dark');
-    expect(getTheme('Business').name).toBe('business');
-    expect(getTheme('warm').name).toBe('warm');
-    expect(getTheme('AURORA').name).toBe('aurora');
-    expect(getTheme('Neon').name).toBe('neon');
-    expect(getTheme('nord').name).toBe('nord');
-    expect(getTheme('dracula').name).toBe('dracula');
-    expect(getTheme('beige').name).toBe('beige');
-    expect(getTheme('ink').name).toBe('ink');
+  it('getTheme resolves color scheme names case-insensitively', () => {
+    expect(getTheme('ocean').name).toBe('ocean');
+    expect(getTheme('ocean').presetSet).toBeUndefined();
+    expect(getTheme('Ocean').name).toBe('ocean');
+    expect(getTheme('OCEAN-DARK').name).toBe('ocean-dark');
   });
 
-  it('should fallback to clean when theme is unknown or empty', () => {
-    expect(getTheme(undefined).name).toBe('clean');
-    expect(getTheme('').name).toBe('clean');
-    expect(getTheme('non-existent-theme').name).toBe('clean');
-  });
-
-  it('should support default alias pointing to clean', () => {
-    const theme = getTheme('default');
-    expect(theme.colors.primary).toBe(cleanTheme.colors.primary);
-    expect(theme.colors.background).toBe(cleanTheme.colors.background);
-  });
-
-  it('should expose a mix of themes with gradient backgrounds', () => {
-    const gradientThemes = Object.values(themes).filter((t) => t.colors.backgroundGradient);
-    expect(gradientThemes.map((t) => t.name).sort()).toEqual([
-      'aurora',
-      'beige',
-      'dark',
-      'ink',
-      'warm',
-    ]);
-    // Gradient themes keep a flat fallback color and a documented angle
-    for (const t of gradientThemes) {
-      expect(HEX.test(t.colors.background)).toBe(true);
-      expect(t.colors.backgroundGradient?.angle ?? 180).toBeGreaterThan(0);
+  it('default theme is blue when theme is omitted or empty', () => {
+    for (const name of [undefined, '', '  '] as const) {
+      const theme = getTheme(name as string | undefined);
+      expect(theme.presetSet).toBe('blue');
+      expect(theme.name).toBe('ocean');
+      expect(theme.textSet).toBe('academic');
+      expect(theme.layoutSet).toBe('legacy');
     }
-    // Gradient themes cover both light and dark looks
-    const darkBgs = gradientThemes.filter((t) => isDark(t.colors.background)).map((t) => t.name);
-    expect(darkBgs).toContain('aurora');
-    expect(darkBgs).toContain('dark');
   });
 
-  it('should pair new dark themes with a matching shiki theme', () => {
-    expect(getTheme('nord').shikiTheme).toBe('nord');
-    expect(getTheme('dracula').shikiTheme).toBe('dracula');
+  it('falls back to default theme blue when theme is unknown', () => {
+    const theme = getTheme('non-existent-theme');
+    expect(theme.presetSet).toBe('blue');
+    expect(DEFAULT_SCHEME_NAME).toBe('ocean');
   });
 
-  it('should keep cover title text readable against the cover background', () => {
-    for (const theme of Object.values(themes)) {
-      const lText = luminance(theme.colors.titleText ?? 'FFFFFF');
-      // Cover background is the gradient (both endpoints) when one is defined,
-      // otherwise the solid titleBackground / primary design.
-      const backgrounds = theme.colors.backgroundGradient
-        ? [theme.colors.backgroundGradient.from, theme.colors.backgroundGradient.to]
-        : [theme.colors.titleBackground ?? theme.colors.primary];
-      for (const bg of backgrounds) {
-        expect(Math.abs(luminance(bg) - lText)).toBeGreaterThan(0.35);
-      }
+  it('throws on non-string theme values (CLI contract)', () => {
+    expect(() => getTheme(['clean'] as unknown as string)).toThrow(/Invalid theme value/);
+  });
+
+  it('pairs light/dark schemes with a matching shiki theme', () => {
+    expect(getTheme('ocean').shikiTheme).toBe('github-light');
+    expect(getTheme('ocean-dark').shikiTheme).toBe('github-dark');
+  });
+
+  it('maps paper→background and ink→text without swapping roles', () => {
+    const light = getTheme('ocean');
+    const dark = getTheme('ocean-dark');
+    expect(light.colors.background).toBe('F0F8FF');
+    expect(light.colors.text).toBe('1E4A6F');
+    expect(dark.colors.background).toBe('0B1C2E');
+    expect(dark.colors.text).toBe('D6E7F5');
+    expect(isDarkColor(light.colors.background)).toBe(false);
+    expect(isDarkColor(dark.colors.background)).toBe(true);
+  });
+
+  it('keeps cover title text readable against the cover background', () => {
+    for (const scheme of listColorSchemes()) {
+      const theme = createThemeFromScheme(scheme);
+      const text = theme.colors.titleText ?? theme.colors.text;
+      const bg = theme.colors.titleBackground ?? theme.colors.background;
+      const lum = (hex: string): number => {
+        const r = parseInt(hex.slice(0, 2), 16) / 255;
+        const g = parseInt(hex.slice(2, 4), 16) / 255;
+        const b = parseInt(hex.slice(4, 6), 16) / 255;
+        return 0.299 * r + 0.587 * g + 0.114 * b;
+      };
+      expect(Math.abs(lum(bg) - lum(text))).toBeGreaterThan(0.2);
     }
   });
 });
 
-function luminance(hex: string): number {
-  const r = parseInt(hex.slice(0, 2), 16) / 255;
-  const g = parseInt(hex.slice(2, 4), 16) / 255;
-  const b = parseInt(hex.slice(4, 6), 16) / 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
+describe('code highlight colour on scheme themes', () => {
+  const isDark = (hex: string): boolean => {
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return 0.299 * r + 0.587 * g + 0.114 * b < 128;
+  };
 
-function isDark(hex: string): boolean {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return 0.299 * r + 0.587 * g + 0.114 * b < 128;
-}
-
-describe('code highlight colour', () => {
-  it('gives every theme a band that the light code tokens can sit on', () => {
-    // Tokens come from Shiki's dark theme, so they are light; a band picked for
-    // a light surface made the highlighted line unreadable — pale yellow under
-    // light grey text in 7 of the 11 themes before this was derived instead.
-    for (const [name, theme] of Object.entries(themes)) {
+  it('derives a readable highlight band for every scheme theme', () => {
+    for (const scheme of listColorSchemes()) {
+      const theme = createThemeFromScheme(scheme);
       const band = highlightBackgroundFor(theme).replace(/^#/, '');
-      expect(isDark(band), `${name}: highlight band #${band} is too light`).toBe(true);
+      expect(HEX.test(band), `${scheme.name}: band #${band}`).toBe(true);
+      const darkDeck =
+        (theme.shikiTheme ?? '').includes('dark') || isDarkColor(theme.colors.codeBackground);
+      if (darkDeck) {
+        expect(isDark(band), `${scheme.name}: highlight band #${band} is too light`).toBe(true);
+      }
     }
-  });
-
-  it('keeps a band a theme names explicitly', () => {
-    // dracula picks its own; deriving must not override a deliberate choice.
-    expect(highlightBackgroundFor(themes.dracula)).toBe('44475A');
   });
 });

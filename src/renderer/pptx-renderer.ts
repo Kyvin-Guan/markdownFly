@@ -54,6 +54,7 @@ export async function renderPresentation(
     pageNumber: 0,
     totalSlides: presentation.slides.length,
     currentSection: '',
+    sectionNumber: 0,
   };
 
   // Render each slide
@@ -65,8 +66,11 @@ export async function renderPresentation(
     slide.background = backgroundProps;
 
     ctx.pageNumber = i + 1;
-    if (node.layout === 'section' && node.title) {
-      ctx.currentSection = node.title;
+    if (node.layout === 'section') {
+      if (node.title) ctx.currentSection = node.title;
+      // Auto-increment section sequence before drawing, so the first section
+      // slide shows "01" and every following one continues the count.
+      ctx.sectionNumber = (ctx.sectionNumber ?? 0) + 1;
     }
 
     await renderSlideLayout(slide, node, theme, ctx);

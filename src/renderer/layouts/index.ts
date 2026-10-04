@@ -13,6 +13,9 @@ import { renderSectionSlide } from './section.js';
 import { renderContentSlide } from './content.js';
 import { renderCodeSlide } from './code.js';
 import { renderQuoteSlide } from './quote.js';
+import { renderClosingSlide } from './closing.js';
+import { renderImageSlide } from './image-pages.js';
+import { extraNumber, extraString, layoutSpec, resolveSideMargins, specNumber } from './layout-spec.js';
 
 /** Context passed to layout renderers for async operations */
 export interface RenderContext {
@@ -25,6 +28,11 @@ export interface RenderContext {
   totalSlides?: number;
   /** Title of the most recent section layout slide ({section} placeholder) */
   currentSection?: string;
+  /**
+   * Auto-incrementing section number, started at 1 and incremented once per
+   * section layout slide. Formatted by section renderers (minimal → "01").
+   */
+  sectionNumber?: number;
 }
 
 /**
@@ -54,7 +62,7 @@ export async function renderSlideLayout(
       break;
 
     case 'section':
-      renderSectionSlide(slide, node, theme);
+      renderSectionSlide(slide, node, theme, ctx);
       break;
 
     case 'code':
@@ -63,6 +71,22 @@ export async function renderSlideLayout(
 
     case 'quote':
       renderQuoteSlide(slide, node, theme);
+      break;
+
+    case 'closing':
+      renderClosingSlide(slide, node, theme);
+      break;
+
+    case 'image-single':
+      await renderImageSlide(slide, node, theme, ctx, 1);
+      break;
+
+    case 'image-double':
+      await renderImageSlide(slide, node, theme, ctx, 2);
+      break;
+
+    case 'image-triple':
+      await renderImageSlide(slide, node, theme, ctx, 3);
       break;
 
     case 'content':
@@ -76,19 +100,64 @@ export async function renderSlideLayout(
     slide.addNotes(node.notes);
   }
 
-  // Footer / page number (skip cover slides)
-  if (node.layout !== 'title' && node.layout !== 'closing' && node.layout !== 'blank') {
+  // Footer / page number (skip cover, closing, blank, and section pages that opt out)
+  const sectionSpec = layoutSpec(theme, 'section');
+  const sectionNoFooter = extraString(sectionSpec, 'footer', 'on') === 'off';
+  if (
+    node.layout !== 'title' &&
+    node.layout !== 'closing' &&
+    node.layout !== 'blank' &&
+    !(node.layout === 'section' && sectionNoFooter)
+  ) {
     const footerText = renderFooter(node, theme, ctx);
+    const footerSpec = layoutSpec(theme, 'footer');
+    const sides = resolveSideMargins(
+      footerSpec,
+      specNumber(theme.layouts?.content?.margin, 0.6),
+    );
+    // Prefer content-side asymmetric margins when footer omits its own
+    const marginLeft =
+      footerSpec.extra?.marginLeft !== undefined
+        ? sides.left
+        : specNumber(
+            theme.layouts?.content?.extra?.marginLeft as number | undefined,
+            specNumber(theme.layouts?.content?.margin, sides.left),
+          );
+    const marginRight =
+      footerSpec.extra?.marginRight !== undefined
+        ? sides.right
+        : specNumber(
+            theme.layouts?.content?.extra?.marginRight as number | undefined,
+            specNumber(theme.layouts?.content?.margin, sides.right),
+          );
+    const contentW = Math.max(2, 13.33 - marginLeft - marginRight);
+    const showDivider =
+      theme.styles?.footerDivider ?? footerSpec.footerDivider ?? false;
+    const footerAlign = extraString(footerSpec, 'footerAlign', 'right') as
+      | 'left'
+      | 'center'
+      | 'right';
+
+    if (showDivider) {
+      slide.addShape('rect' as PptxGenJS.ShapeType, {
+        x: marginLeft,
+        y: extraNumber(footerSpec, 'dividerY', 7.08),
+        w: contentW,
+        h: 0.015,
+        fill: { color: theme.colors.divider ?? theme.colors.secondary },
+      });
+    }
+
     if (footerText) {
       slide.addText(footerText, {
-        x: 0.6,
-        y: 7.16,
-        w: 12.13,
+        x: marginLeft,
+        y: extraNumber(footerSpec, 'footerY', 7.16),
+        w: contentW,
         h: 0.28,
         fontSize: theme.fontSize.small - 1,
         fontFace: theme.fonts.body,
         color: theme.colors.secondary,
-        align: 'right',
+        align: footerAlign,
         valign: 'middle',
       });
     }

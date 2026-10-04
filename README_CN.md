@@ -96,15 +96,30 @@ pnpm link --global
 # 转换单个文件（输出文件名与输入一致：slides.md → slides.pptx）
 mfly slides.md
 
-# 指定主题（clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink）
-mfly slides.md -t dark
+# 指定主题——预设：blue, emerald, gold, slate；仅色彩：ocean, ocean-dark, forest, champagne, graphite
+mfly slides.md -t blue
+mfly slides.md -t emerald
+mfly slides.md -t ocean-dark
 
 # 指定自定义输出路径
-mfly slides.md -t academic -o presentation.pptx
+mfly slides.md -t blue -o presentation.pptx
+
+# 自由搭配（可选高级能力）：单独覆盖色彩 / 文字 / 版式
+mfly slides.md -t blue --text kai        # blue 配色+版式，文字换楷体
+mfly slides.md --color forest --text academic --layout golden  # 完全自选拼装
+mfly slides.md --layout minimal          # 只换版式，其余走默认主题 blue
 
 # 批量转换多个 Markdown 文件
 mfly docs/*.md
 ```
+
+拼装旗标：
+
+- `--color <name>` 色彩方案：`ocean, ocean-dark, forest, champagne, graphite`
+- `--text <name>` 文字方案：`system, academic, kai, source-han-serif`
+- `--layout <name>` 版式方案：`legacy, folio, golden, minimal`
+
+拼装参数会**精确覆盖**主题对应槽位（优先级：拼装 > 主题预设 > 默认）；只写拼装、不写 `-t` 时以默认主题 `blue` 打底。拼装名不合法时以退出码 `1` 失败并列出可用名。
 
 若默认输出文件名已存在，会自动使用带时间戳的文件名（`slides-20260907-131500.pptx`）而非覆盖。使用 `-o` 时会直接覆盖目标文件。
 
@@ -122,26 +137,32 @@ mfly docs/*.md --quiet
   `{"ok":true,"durationMs":1234,"files":[{"input":"slides.md","output":"C:/abs/slides.pptx","ok":true}]}`。
   单文件失败时 `ok:false` 并附带 `error` 字段。
 - 仅当**所有**文件转换成功时退出码为 `0`；任意文件失败则退出 `1`（stderr 输出汇总行）。
-- `-t` 指定未知主题名时以退出码 `1` 失败（Markdown frontmatter 中的主题名会回退到 `clean` 并输出警告）。
+- `-t` 指定未知主题名时以退出码 `1` 失败（Markdown frontmatter 中的未知主题名会回退到默认主题 `blue` 并输出警告）。
 - 进度信息输出到 stderr；错误和警告始终输出到 stderr。
 
 ---
 
 ## 🎨 内置主题
 
-| 主题 | 风格 / 氛围 | 主要颜色 | 适合场景 |
-| :--- | :--- | :--- | :--- |
-| **`clean`** *(默认)* | 现代简洁科技感 | 白色 `#FFFFFF` / 蓝色 `#2563EB` | 通用开发者演讲 & 技术分享 |
-| **`academic`** | 学术 LaTeX Beamer 风格 | 白色 `#FFFFFF` / 普鲁士蓝 `#003366` | 论文、算法、研究答辩 |
-| **`dark`** | 极客暗色模式 | 深板岩 `#0F172A` / 青色 `#38BDF8` | 开发者 Meetup、终端 & 编程主题 |
-| **`business`** | 专业商务风格 | 浅板岩 `#F8FAFC` / 深海军蓝 `#1E3A8A` | 业务评审、高管汇报 & 报告 |
-| **`warm`** | 暖纸 / Marp Gaia 风格 | 暖沙色 `#FDFBF7` / 森林绿 `#065F46` | 主题演讲、设计回顾 & 叙事型 |
-| **`aurora`** | 深色霓虹渐变 | 深海军蓝 `#06091C` / 薄荷蓝 `#7AA2FF` | 产品发布、创意 & 未来感 |
-| **`neon`** | 高对比度赛博风 | 黑色 `#121212` / 青色 `#00E5FF` + 洋红 `#FF4081` | 技术演示、赛博朋克风格 |
-| **`nord`** | 北极霜冻 | 深色 `#2E3440` / 霜蓝 `#88C0D0` | 冷静 dev/design 主题 |
-| **`dracula`** | Dracula 暗色 | 炭灰 `#282A36` / 紫色 `#BD93F9` + 粉色 `#FF79C6` | 代码密集型暗色演讲 |
-| **`beige`** | 暖纸极简 | 米色 `#F7F3DE` / 青铜 `#8B6F3D` + 赤陶 `#C0563C` | 编辑类、工作坊、有机风格 |
-| **`ink`** | 中式水墨 | 宣纸 `#F7F4EC` / 墨色 `#2F3530` + 朱砂 `#C0272D` | 文化、人文、国风主题 |
+`-t` / frontmatter `theme:` 使用**主题名**。解析顺序：**主题预设 → 色彩方案**。
+
+| 主题名 | 类型 | 色彩 | 文字 | 版式 | 适合场景 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`blue`** *(默认)* | 预设包 | `ocean` | `academic`（宋体） | `legacy` | 默认完整主题 |
+| `emerald` | 预设包 | `forest` | `system`（微软雅黑） | `folio` | 清新绿 · 编辑册页 |
+| `gold` | 预设包 | `champagne` | `kai`（楷体） | `golden` | 温暖金 · 黄金版式 |
+| `slate` | 预设包 | `graphite` | `source-han-serif`（思源宋体） | `minimal` | 灰白极简 · 归档档案 |
+| `ocean` | 仅色彩 | 深海墨蓝 `#1E4A6F` / 近白海沫 `#F0F8FF`；主 `#4F9FD9` / 辅 `#2D6A9F` | 默认 `system` | 不启用版式方案 | 只要换色时 |
+| `ocean-dark` | 仅色彩 | 浅沫 `#D6E7F5` / 深海 `#0B1C2E`；主 `#5BAAE8` / 辅 `#8BBCDD` | 默认 `system` | 不启用版式方案 | 夜场深色演示（`ocean` 反色） |
+| `forest` | 仅色彩 | 深墨绿 `#2A4A3F` / 淡白绿 `#F0FFF5`；主 `#5F9A8A` / 辅 `#3F6A5A` | 默认 `system` | 不启用版式方案 | 清新绿色演示 |
+| `champagne` | 仅色彩 | 暗金 `#CFB53B` / 米白奶油 `#FFFCE6`；主 `#E5CD5F` / 辅 `#F5E08A` | 默认 `system` | 不启用版式方案 | 温暖金属金演示 |
+| `graphite` | 仅色彩 | 深灰 `#4D4D4D` / 浅灰近白 `#F8F8F8`；主 `#D9D9D9` / 辅 `#A6A6A6` | 默认 `system` | 不启用版式方案 | 中性灰白演示 |
+
+- 不写 `-t` / `theme` 时使用默认主题 **`blue`**。
+- 主题预设 = 一次选齐色彩 × 文字 × 版式；色彩方案名仍可用于「只改颜色」。
+- `ocean-dark` 是 `ocean` 的反色，属同一色彩族，与 `ocean` 共用默认文字/版式，未单列成预设主题。
+- **自由搭配**：可通过 `--color` / `--text` / `--layout`（或 frontmatter `color_scheme` / `text_scheme` / `layout_scheme`）单独覆盖主题的色彩 / 文字 / 版式槽位。
+- 库 API 可通过 `registerThemePreset` / `registerColorScheme` / `registerTextScheme` / `registerLayoutScheme` 扩展。
 
 ---
 
@@ -157,7 +178,10 @@ mfly docs/*.md --quiet
 
 ```yaml
 ---
-theme: dark # 可选：clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink
+theme: blue # 可选：blue（默认）, emerald, gold, slate, ocean, ocean-dark, forest, champagne, graphite
+color_scheme: champagne # 可选：覆盖主题色彩的色彩方案（ocean, forest, champagne, graphite...）
+text_scheme: kai # 可选：覆盖主题文字的文字方案（system, academic, kai, source-han-serif）
+layout_scheme: folio # 可选：覆盖主题版式的版式方案（legacy, folio, golden, minimal）
 author: "你的名字"
 footer: "保密 - {page} / {total}" # {page}/{total}/{section}/{title}
 resource_dir: ./assets # 相对图片路径的基础目录
@@ -211,7 +235,7 @@ graph LR
 
 | 指令 | 值 | 效果 |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` | 覆盖自动检测的布局 |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | 覆盖自动检测的布局 |
 | `notes` | 文本 | 该幻灯片的演讲者备注 |
 | `chart` | `bar` / `line` / `pie` | 将第一个表格渲染为图表 |
 | `highlight` | `2-4,6` | 高亮幻灯片代码块中的指定行 |
@@ -232,6 +256,8 @@ graph LR
 ```
 
 支持的变体：`NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` / `DANGER` — 渲染为主题风格的强调卡片。
+
+也可以在标记后写上自定义标题：`> [!NOTE] 部署提醒`。
 
 ### 任务清单
 
@@ -323,6 +349,31 @@ PlantUML 说明：
 - `!theme` 不可用（打包的引擎不包含主题文件）；请改用 `skinparam`。该指令会跳过并输出警告，而不会导致图表失败。
 - 设置 `MFLY_DEBUG=1` 可将 PlantUML 引擎的内部日志转发到 stderr；默认静音以避免干扰 stdout。
 - 图表错误不会导致文档生成失败：受影响的幻灯片会显示红色占位符，演示文档其余部分仍会正常生成。
+
+#### 注释（`%%` 草稿行）
+
+以 `%%` 开头的独立行会被完全移除，绝不进入幻灯片——适合写不会出现的草稿/批注。代码块内部不受影响。
+
+```markdown
+%% 这行不会出现在你的幻灯片里
+```
+
+#### 封面作者 / 日期行
+
+首页封面会识别以 `作者：…` / `日期：…` 开头的行（可多行）作为封面元信息，而不是正文段落：
+
+```markdown
+作者：张三
+日期：2026-10-04
+```
+
+#### 图片页自动布局
+
+一页只含 1–3 张图片且没有大段正文时，会自动识别为图片页布局（`image-single` / `image-double` / `image-triple`）。也可显式指定，包括通过 `layout` 指令：
+
+```markdown
+@(layout=image-single)
+```
 
 ### 注脚说明
 

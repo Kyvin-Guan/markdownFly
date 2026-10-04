@@ -96,15 +96,33 @@ pnpm link --global
 # Convert a single file (named after the input: slides.md → slides.pptx)
 mfly slides.md
 
-# Specify theme (clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink)
-mfly slides.md -t dark
+# Specify theme — presets: blue, emerald, gold, slate; color-only: ocean, ocean-dark, forest, champagne, graphite
+mfly slides.md -t blue
+mfly slides.md -t emerald
+mfly slides.md -t ocean-dark
 
 # Specify custom output path
-mfly slides.md -t academic -o presentation.pptx
+mfly slides.md -t blue -o presentation.pptx
+
+# Free composition (optional advanced): override color / text / layout slots
+mfly slides.md -t blue --text kai        # blue palette+layout, swap text to kai
+mfly slides.md --color forest --text academic --layout golden  # full custom mix
+mfly slides.md --layout minimal          # only the layout, rest default theme blue
 
 # Batch convert multiple Markdown files
 mfly docs/*.md
 ```
+
+Composition flags:
+
+- `--color <name>` color scheme: `ocean, ocean-dark, forest, champagne, graphite`
+- `--text <name>` text scheme: `system, academic, kai, source-han-serif`
+- `--layout <name>` layout scheme: `legacy, folio, golden, minimal`
+
+A composition flag **precisely overrides** the matching theme slot
+(precedence: composition > theme preset > default). When composition flags are
+given without `-t`, the default theme `blue` is used as the base. An unknown
+composition name fails with exit `1` and lists the available names.
 
 If the default output name already exists, a timestamped name is used
 (`slides-20260907-131500.pptx`) instead of overwriting. With `-o` the target
@@ -125,27 +143,34 @@ mfly docs/*.md --quiet
   Per-file failures set `ok:false` with an `error` field.
 - Exit code is `0` only when **every** file converts successfully; if any file
   fails the process exits `1` (a summary line is printed to stderr).
-- `-t` with an unknown theme name fails with exit `1` (theme names in markdown
-  frontmatter fall back to `clean` with a warning).
+- `-t` with an unknown theme name fails with exit `1` (unknown theme names in
+  markdown frontmatter fall back to the default theme `blue` with a warning).
 - Progress lines go to stderr; errors and warnings always go to stderr.
 
 ---
 
 ## 🎨 Built-in Themes
 
-| Theme | Style / Mood | Primary Colors | Best For |
-| :--- | :--- | :--- | :--- |
-| **`clean`** *(default)* | Modern clean tech | White `#FFFFFF` / Blue `#2563EB` | General developer presentations & tech sharing |
-| **`academic`** | Scholarly LaTeX Beamer | White `#FFFFFF` / Prussian Blue `#003366` | Papers, algorithms, research defenses |
-| **`dark`** | Dark mode geek | Dark Slate `#0F172A` / Cyan `#38BDF8` | Developer meetups, terminal & coding decks |
-| **`business`** | Professional corporate | Soft Slate `#F8FAFC` / Deep Navy `#1E3A8A` | Business reviews, executive pitches & reports |
-| **`warm`** | Warm paper / Marp Gaia | Warm Sand `#FDFBF7` / Forest Green `#065F46` | Keynotes, design retrospectives & narratives |
-| **`aurora`** | Dark neon gradient | Deep Navy `#06091C` / Mint-Blue `#7AA2FF` | Product launches, creative & futuristic decks |
-| **`neon`** | High-contrast cyber | Black `#121212` / Cyan `#00E5FF` + Magenta `#FF4081` | Tech demos, cyberpunk-style sharing |
-| **`nord`** | Arctic Frost | Dark `#2E3440` / Frost Blue `#88C0D0` | Cold & calm dev/design decks |
-| **`dracula`** | Dracula dark | Charcoal `#282A36` / Purple `#BD93F9` + Pink `#FF79C6` | Code-heavy dark presentations |
-| **`beige`** | Warm paper minimal | Beige `#F7F3DE` / Bronze `#8B6F3D` + Terracotta `#C0563C` | Editorial, workshop, organics |
-| **`ink`** | Chinese ink-wash | Rice Paper `#F7F4EC` / Ink `#2F3530` + Vermilion `#C0272D` | Culture, humanities, Chinese-style decks |
+`-t` / frontmatter `theme:` take a **theme name**. Resolution order:
+**theme preset → color scheme**.
+
+| Theme name | Kind | Color | Text | Layout | Best For |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`blue`** *(default)* | Preset package | `ocean` | `academic` (SimSun) | `legacy` | Default full theme |
+| `emerald` | Preset package | `forest` | `system` (Microsoft YaHei) | `folio` | Fresh green · editorial layout |
+| `gold` | Preset package | `champagne` | `kai` (KaiTi) | `golden` | Warm gold · golden-ratio layout |
+| `slate` | Preset package | `graphite` | `source-han-serif` (Source Han Serif) | `minimal` | Neutral monochrome · archival layout |
+| `ocean` | Color only | Deep sea ink `#1E4A6F` / Sea-foam paper `#F0F8FF`; primary `#4F9FD9` / secondary `#2D6A9F` | Default `system` | Layout pack off | Recolor only |
+| `ocean-dark` | Color only | Light foam `#D6E7F5` / Deep sea `#0B1C2E`; primary `#5BAAE8` / secondary `#8BBCDD` | Default `system` | Layout pack off | Night / dark decks (inverse of `ocean`) |
+| `forest` | Color only | Deep green ink `#2A4A3F` / Pale green paper `#F0FFF5`; primary `#5F9A8A` / secondary `#3F6A5A` | Default `system` | Layout pack off | Fresh green decks |
+| `champagne` | Color only | Dark gold ink `#CFB53B` / Cream paper `#FFFCE6`; primary `#E5CD5F` / secondary `#F5E08A` | Default `system` | Layout pack off | Warm metallic gold decks |
+| `graphite` | Color only | Dark gray ink `#4D4D4D` / Light gray paper `#F8F8F8`; primary `#D9D9D9` / secondary `#A6A6A6` | Default `system` | Layout pack off | Neutral monochrome decks |
+
+- Omitting `-t` / `theme` uses the default theme **`blue`**.
+- A theme preset selects color × text × layout in one name; color-scheme names remain valid for recolor-only use.
+- `ocean-dark` is the inverse of `ocean` (same color family), sharing its default text/layout; not listed as a separate preset.
+- **Free composition**: override the theme's color / text / layout slots individually via `--color` / `--text` / `--layout` (or frontmatter `color_scheme` / `text_scheme` / `layout_scheme`).
+- Extend via library APIs `registerThemePreset` / `registerColorScheme` / `registerTextScheme` / `registerLayoutScheme`.
 
 ---
 
@@ -161,7 +186,10 @@ mfly docs/*.md --quiet
 
 ```yaml
 ---
-theme: dark # Options: clean, academic, dark, business, warm, aurora, neon, nord, dracula, beige, ink
+theme: blue # Options: blue (default), emerald, gold, slate, ocean, ocean-dark, forest, champagne, graphite
+color_scheme: champagne # Optional: color scheme overriding the theme's color (ocean, forest, champagne, graphite...)
+text_scheme: kai # Optional: text scheme overriding the theme's text (system, academic, kai, source-han-serif)
+layout_scheme: folio # Optional: layout scheme overriding the theme's layout (legacy, folio, golden, minimal)
 author: "Your Name"
 footer: "Confidential - {page} / {total}" # {page}/{total}/{section}/{title}
 resource_dir: ./assets # Base directory for relative image paths
@@ -215,7 +243,7 @@ A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide op
 
 | Directive | Value | Effect |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` | Override auto-detected layout |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | Override auto-detected layout |
 | `notes` | text | Speaker notes for this slide |
 | `chart` | `bar` / `line` / `pie` | Render the first table as a chart |
 | `highlight` | `2-4,6` | Highlight lines in the slide's code block |
@@ -236,6 +264,8 @@ A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide op
 ```
 
 Supported variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` / `DANGER` — rendered as theme-styled accent cards.
+
+You can also give a card a custom title by writing it after the marker: `> [!NOTE] Deploy reminder`.
 
 ### Task Lists
 
@@ -327,6 +357,36 @@ PlantUML notes:
 - `!theme` is not available (the bundled engine ships no theme files); use `skinparam` instead. The directive is skipped with a warning rather than failing the diagram.
 - Set `MFLY_DEBUG=1` to forward the PlantUML engine's internal logging to stderr; it is muted by default so it cannot disturb stdout.
 - Diagram errors do not fail the deck: the affected slide shows a red placeholder and the rest of the presentation is still generated.
+
+#### Comments (`%%` Draft Lines)
+
+A standalone line starting with `%%` is removed entirely before rendering —
+handy for draft notes that never reach the deck. Lines inside fenced code
+blocks are never affected.
+
+```markdown
+%% this line will never appear in your slides
+```
+
+#### Cover Author / Date Lines
+
+The first cover slide recognizes `作者：…` / `日期：…` prefix lines (multiple
+lines allowed) as cover metadata rather than body paragraphs:
+
+```markdown
+作者：张三
+日期：2026-10-04
+```
+
+#### Image-Page Auto Layout
+
+A slide holding 1–3 images with no substantial body text is auto-detected as an
+image page (`image-single` / `image-double` / `image-triple`). You can also opt
+in explicitly, including via the `layout` directive:
+
+```markdown
+@(layout=image-single)
+```
 
 ### Footnotes
 

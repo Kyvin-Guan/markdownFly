@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { renderDiagram, isDiagramLanguage } from '../src/diagrams/index.js';
 import { getImageSize } from '../src/utils/image-size.js';
 import { fitInBox } from '../src/utils/image-fit.js';
-import { cleanTheme, darkTheme } from '../src/themes/index.js';
+import { getTheme } from '../src/themes/index.js';
 
 const FLOWCHART_CODE = `graph TD
     A[Markdown 源文件] --> B[Unified AST 解析]
@@ -62,7 +62,7 @@ describe('Diagrams', () => {
   });
 
   it('mermaid flowchart PNG covers the full layout (no tiny viewBox crop)', async () => {
-    const buffer = await renderDiagram('mermaid', FLOWCHART_CODE, cleanTheme);
+    const buffer = await renderDiagram('mermaid', FLOWCHART_CODE, getTheme('ocean'));
     const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     expect(size!.width).toBeGreaterThan(0);
@@ -73,7 +73,7 @@ describe('Diagrams', () => {
   }, 60000);
 
   it('mermaid renders under a dark theme', async () => {
-    const buffer = await renderDiagram('mermaid', FLOWCHART_CODE, darkTheme);
+    const buffer = await renderDiagram('mermaid', FLOWCHART_CODE, getTheme('ocean-dark'));
     const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     expect(size!.width).toBeGreaterThan(0);
@@ -85,7 +85,7 @@ describe('Diagrams', () => {
       node [shape=box, style=filled, fillcolor=lightblue, fontname="Segoe UI"];
       CLI -> Parser -> Transform -> PPTXRenderer -> FileOutput;
     }`;
-    const buffer = await renderDiagram('dot', code, cleanTheme);
+    const buffer = await renderDiagram('dot', code, getTheme('ocean'));
     const size = getImageSize(buffer);
     expect(size).not.toBeNull();
     expect(size!.width).toBeGreaterThan(0);

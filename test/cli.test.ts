@@ -67,7 +67,7 @@ describe('mfly CLI contract', () => {
     // Non-string theme (list) in frontmatter → getTheme throws → per-file failure.
     writeFileSync(
       join(tmpDir, 'bad.md'),
-      '---\ntheme: [clean, dark]\n---\n# Bad\n\nContent.\n',
+      '---\ntheme: [ocean, ocean-dark]\n---\n# Bad\n\nContent.\n',
     );
 
     const res = runCli(['bad.md', 'a.md'], tmpDir);
@@ -123,6 +123,48 @@ describe('mfly CLI contract', () => {
     expect(res.status).toBe(0);
     expect(res.stderr).not.toContain('Converting');
     expect(res.stdout).toContain('Done in');
+  });
+
+  it('accepts free-composition flags and converts the deck', () => {
+    const res = runCli(
+      ['-t', 'blue', '--color', 'forest', '--text', 'kai', '--layout', 'golden', 'slides.md'],
+      tmpDir,
+    );
+
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('Done in');
+  });
+
+  it('rejects an unknown --color with exit 1', () => {
+    const res = runCli(['--color', 'bogus', 'slides.md'], tmpDir);
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown color scheme "bogus"');
+    expect(res.stdout).toBe('');
+  });
+
+  it('rejects an unknown --text with exit 1', () => {
+    const res = runCli(['--text', 'bogus', 'slides.md'], tmpDir);
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown text scheme "bogus"');
+    expect(res.stdout).toBe('');
+  });
+
+  it('rejects an unknown --layout with exit 1', () => {
+    const res = runCli(['--layout', 'bogus', 'slides.md'], tmpDir);
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown layout scheme "bogus"');
+    expect(res.stdout).toBe('');
+  });
+
+  it('respects frontmatter color_scheme when it reaches getTheme (unknown warns)', () => {
+    writeFileSync(join(tmpDir, 'fmc.md'), '---\ncolor_scheme: nope\n---\n# C\n\nContent.\n');
+    const res = runCli(['fmc.md'], tmpDir);
+
+    expect(res.status).toBe(0);
+    expect(res.stderr).toContain('Color scheme "nope" not found');
   });
 
   it('respects frontmatter theme when -t is omitted (unknown name warns and falls back)', () => {
@@ -218,7 +260,7 @@ describe('mermaid does not leak browser globals', () => {
       '# B\n\ncontent\n\n@(background=./batch/bg.png)\n',
     );
 
-    const res = runCli(['aa-mermaid.md', 'bb-background.md', '-t', 'clean'], tmpDir);
+    const res = runCli(['aa-mermaid.md', 'bb-background.md', '-t', 'ocean'], tmpDir);
 
     expect(res.status).toBe(0);
     expect(existsSync(join(tmpDir, 'bb-background.pptx'))).toBe(true);

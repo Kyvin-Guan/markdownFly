@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderDiagram } from '../src/diagrams/index.js';
-import { cleanTheme } from '../src/themes/index.js';
+import { getTheme } from '../src/themes/index.js';
 
 const captured = vi.hoisted(() => [] as string[]);
 
@@ -67,7 +67,7 @@ function lineStyles(svg: string): Array<string | null> {
 describe('PlantUML strokes the engine omits', () => {
   it('draws sequence lifelines as dashed lines', async () => {
     captured.length = 0;
-    await renderDiagram('plantuml', SEQUENCE, cleanTheme);
+    await renderDiagram('plantuml', SEQUENCE, getTheme('ocean'));
 
     const styles = lineStyles(captured[captured.length - 1]);
     expect(styles.length).toBeGreaterThanOrEqual(3);
@@ -78,7 +78,7 @@ describe('PlantUML strokes the engine omits', () => {
 
   it('draws class compartment dividers as solid lines', async () => {
     captured.length = 0;
-    await renderDiagram('plantuml', CLASS_DIAGRAM, cleanTheme);
+    await renderDiagram('plantuml', CLASS_DIAGRAM, getTheme('ocean'));
 
     const styles = lineStyles(captured[captured.length - 1]);
     // The dividers under the title and between fields and methods.
@@ -95,10 +95,10 @@ describe('PlantUML strokes the engine omits', () => {
   ] as const) {
     it(`makes a visible difference to ${name}`, async () => {
       removeInjectedStroke.value = false;
-      const withStrokes = await renderDiagram('plantuml', code, cleanTheme);
+      const withStrokes = await renderDiagram('plantuml', code, getTheme('ocean'));
 
       removeInjectedStroke.value = true;
-      const withoutStrokes = await renderDiagram('plantuml', code, cleanTheme);
+      const withoutStrokes = await renderDiagram('plantuml', code, getTheme('ocean'));
 
       removeInjectedStroke.value = false;
       expect(withStrokes.equals(withoutStrokes)).toBe(false);

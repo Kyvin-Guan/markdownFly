@@ -211,14 +211,14 @@ describe('parseMarkdown: grammar features', () => {
   it('parses resource_dir alias from frontmatter', () => {
     const md = [
       '---',
-      'theme: dark',
+      'theme: ocean-dark',
       'resource_dir: ./assets',
       '---',
       '# T',
     ].join('\n');
     const p = parseMarkdown(md);
     expect(p.config.resourceDir).toBe('./assets');
-    expect(p.config.theme).toBe('dark');
+    expect(p.config.theme).toBe('ocean-dark');
   });
 
   it('frontmatter layout is used as fallback but @() beats it', () => {
