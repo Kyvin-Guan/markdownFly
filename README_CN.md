@@ -20,6 +20,7 @@
 <details>
 <summary>📖 目录</summary>
 
+- [🧩 安装 SKILL](#-安装-skill)
 - [✨ 功能特性](#-功能特性)
 - [📦 安装](#-安装)
 - [🚀 快速上手](#-快速上手)
@@ -37,13 +38,36 @@
   - [注释（`%%` 草稿行）](#注释-草稿行)
   - [封面作者 / 日期行](#封面作者--日期行)
   - [图片页自动布局](#图片页自动布局)
-  - [注脚说明](#注脚说明)
+  - [注意事项](#注意事项)
 - [🧪 测试](#-测试)
 - [🤔 为什么选择 MarkdownFly？](#-为什么选择-markdownfly)
 - [⭐ Star 趋势](#-star-趋势)
 - [📄 许可证](#-许可证)
 
 </details>
+
+---
+
+## 🧩 安装 SKILL
+
+把下面这段话直接发给你的 AI 助手（ZCode / Claude Code 等支持 Agent Skills 的工具），它会自动完成安装：
+
+```text
+请帮我安装 markdownfly skill：
+1. 克隆 https://github.com/Kyvin-Guan/markdownFly.git 到临时目录
+2. 把其中的 skills/markdownfly/ 完整复制到 ~/.agents/skills/markdownfly/
+   （Windows PowerShell: Copy-Item -Recurse <临时目录>\skills\markdownfly $HOME\.agents\skills\markdownfly）
+3. 完成后告诉我已装好，并给我一句可以触发的示例
+```
+
+安装后新开会话，直接说：
+
+> 用 markdownfly 做一个 5 页的 REST API 技术分享，要有架构图和代码高亮
+
+Agent 会先给出 PPT 预览 markdown，你确认或提修改意见后，再生成可编辑的 `.pptx`。
+
+- 前提：Node.js 20+。skill 内部通过 `npx markdownfly@0.2` 调用，无需先安装 CLI；想自己用命令行见下方 [📦 安装](#-安装)。
+- 手动安装：`git clone` 后把 `skills/markdownfly/` 复制到 `~/.agents/skills/`（用户级，所有项目可用）或 `<项目>/.agents/skills/`（仅该项目可用）。
 
 ---
 
@@ -58,22 +82,8 @@
   - **ECharts**：直接从 JSON 选项生成柱状图、折线图、饼图（via ECharts SSR）。
 - 🖼️ **图片嵌入**：本地文件路径、远程 URL（`http://`/`https://`）和 base64 Data URI。
 - 📐 **自动布局检测**：标题页、章节分隔、代码展示、引用和内容幻灯片。
+- 🎭 **主题系统**：4 个开箱即用的主题预设，也可用色彩 × 文字 × 版式槽位自由拼装出自定义主题（支持通过库 API 注册全新方案）。
 - ⚡ **批量转换**：支持 glob 表达式批量转换（`mfly *.md`）。
-
----
-
-## 🧩 安装为 Agent Skill
-
-本仓库内置可移植的 [Agent Skill](./skills/markdownfly/SKILL.md)：安装后，你的编码 Agent 就能替你写幻灯片 —— 你描述想要的结果，它负责写 Markdown、调用 `markdownfly` 转换并验收产物。
-
-```bash
-git clone https://github.com/Kyvin-Guan/markdownFly.git
-cp -r markdownFly/skills/markdownfly ~/.agents/skills/
-```
-
-- **ZCode** —— 用户级：`~/.agents/skills/` 或 `~/.zcode/skills/`；项目级：`.agents/skills/`。装好后直接说需求（如"做个 5 页的架构分享 PPT"），或调用 `/markdownfly`。
-- **Claude Code** —— 改为复制到 `~/.claude/skills/markdownfly`。
-- 无需其他安装：skill 会指引 Agent 使用 `npx -y markdownfly@latest`（需 Node.js 20+），CLI 在首次使用时自动获取。
 
 ---
 
@@ -162,25 +172,71 @@ mfly docs/*.md --quiet
 
 ## 🎨 内置主题
 
-`-t` / frontmatter `theme:` 使用**主题名**。解析顺序：**主题预设 → 色彩方案**。
+一个主题由三个槽位构成 —— **色彩 × 文字 × 版式**。`-t` / frontmatter
+`theme:` 使用**主题名**，解析顺序为**主题预设 → 色彩方案**；两者都不写时
+使用默认主题 **`blue`**。
 
-| 主题名 | 类型 | 色彩 | 文字 | 版式 | 适合场景 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`blue`** *(默认)* | 预设包 | `ocean` | `academic`（宋体） | `legacy` | 默认完整主题 |
-| `emerald` | 预设包 | `forest` | `system`（微软雅黑） | `folio` | 清新绿 · 编辑册页 |
-| `gold` | 预设包 | `champagne` | `kai`（楷体） | `golden` | 温暖金 · 黄金版式 |
-| `slate` | 预设包 | `graphite` | `source-han-serif`（思源宋体） | `minimal` | 灰白极简 · 归档档案 |
-| `ocean` | 仅色彩 | 深海墨蓝 `#1E4A6F` / 近白海沫 `#F0F8FF`；主 `#4F9FD9` / 辅 `#2D6A9F` | 默认 `system` | 不启用版式方案 | 只要换色时 |
-| `ocean-dark` | 仅色彩 | 浅沫 `#D6E7F5` / 深海 `#0B1C2E`；主 `#5BAAE8` / 辅 `#8BBCDD` | 默认 `system` | 不启用版式方案 | 夜场深色演示（`ocean` 反色） |
-| `forest` | 仅色彩 | 深墨绿 `#2A4A3F` / 淡白绿 `#F0FFF5`；主 `#5F9A8A` / 辅 `#3F6A5A` | 默认 `system` | 不启用版式方案 | 清新绿色演示 |
-| `champagne` | 仅色彩 | 暗金 `#CFB53B` / 米白奶油 `#FFFCE6`；主 `#E5CD5F` / 辅 `#F5E08A` | 默认 `system` | 不启用版式方案 | 温暖金属金演示 |
-| `graphite` | 仅色彩 | 深灰 `#4D4D4D` / 浅灰近白 `#F8F8F8`；主 `#D9D9D9` / 辅 `#A6A6A6` | 默认 `system` | 不启用版式方案 | 中性灰白演示 |
+### 主题预设（一个名字选齐三个槽位）
 
-- 不写 `-t` / `theme` 时使用默认主题 **`blue`**。
-- 主题预设 = 一次选齐色彩 × 文字 × 版式；色彩方案名仍可用于「只改颜色」。
-- `ocean-dark` 是 `ocean` 的反色，属同一色彩族，与 `ocean` 共用默认文字/版式，未单列成预设主题。
-- **自由搭配**：可通过 `--color` / `--text` / `--layout`（或 frontmatter `color_scheme` / `text_scheme` / `layout_scheme`）单独覆盖主题的色彩 / 文字 / 版式槽位。
-- 库 API 可通过 `registerThemePreset` / `registerColorScheme` / `registerTextScheme` / `registerLayoutScheme` 扩展。
+| 主题名 | 色彩 | 文字 | 版式 | 适合场景 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`blue`** *(默认)* | `ocean` | `academic`（宋体） | `legacy` | 默认完整主题，技术分享 |
+| `emerald` | `forest` | `system`（微软雅黑） | `folio` | 清新绿 · 编辑册页 |
+| `gold` | `champagne` | `kai`（楷体） | `golden` | 温暖金 · 黄金比例版式 |
+| `slate` | `graphite` | `source-han-serif`（思源宋体） | `minimal` | 中性灰白 · 归档极简 |
+
+### 槽位菜单 —— 自由组合出更多主题
+
+除四个预设外，每个槽位都有自己的内置可选值。任意配色可搭配任意文字方案
+和任意版式方案，能拼出的主题远不止预设这几个名字。
+
+**色彩方案**（也可直接用作 `-t` 名，只换配色）：
+
+| 名称 | 墨色（文字）/ 纸色（背景） | 主色 / 辅色 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `ocean` | `#1E4A6F` / `#F0F8FF` | `#4F9FD9` / `#2D6A9F` | 浅色海蓝 |
+| `ocean-dark` | `#D6E7F5` / `#0B1C2E` | `#5BAAE8` / `#8BBCDD` | 夜场深色（`ocean` 反色） |
+| `forest` | `#2A4A3F` / `#F0FFF5` | `#5F9A8A` / `#3F6A5A` | 清新绿 |
+| `champagne` | `#CFB53B` / `#FFFCE6` | `#E5CD5F` / `#F5E08A` | 温暖金属金 |
+| `graphite` | `#4D4D4D` / `#F8F8F8` | `#D9D9D9` / `#A6A6A6` | 中性灰白 |
+
+**文字方案**：
+
+| 名称 | 字体 |
+| :--- | :--- |
+| `system` | 平台系统字体（微软雅黑族）— 主题未指定文字时的默认值 |
+| `academic` | 宋体，西文为 Times 风格 |
+| `kai` | 楷体 |
+| `source-han-serif` | 思源宋体 |
+
+**版式方案**：
+
+| 名称 | 风格 |
+| :--- | :--- |
+| `legacy` | 经典 mfly 版式包（`blue` 默认） |
+| `folio` | 编辑排印、书页式留白 |
+| `golden` | 黄金比例构图 |
+| `minimal` | 极少装饰、大量留白 |
+
+### 组合规则
+
+```bash
+mfly deck.md -t blue --text kai            # blue 配色 + 版式，文字换楷体
+mfly deck.md --color forest --text academic --layout golden   # 完全自选拼装
+mfly deck.md --layout minimal              # 只换版式，其余走默认 blue
+```
+
+- 槽位可通过 `--color` / `--text` / `--layout`（或 frontmatter
+  `color_scheme` / `text_scheme` / `layout_scheme`）逐一覆盖。
+- 优先级：拼装旗标 > frontmatter 方案 > 主题预设槽位 > 默认 `blue`。只写
+  拼装旗标、不写 `-t` 时以 `blue` 打底。
+- 仅配色名（如 `-t ocean`）保留默认 `system` 文字与内置默认版式。
+- 名称不合法时：CLI 旗标以退出码 `1` 失败并列出可用名。frontmatter 中不会
+  失败 —— 未知 `theme:` 警告并回退到 `blue`；未知 `color_scheme` 保留主题
+  原色彩；未知 `text_scheme` 回退到 `system`；未知 `layout_scheme` 回退到
+  内置版式。
+- 库使用者可通过 `registerThemePreset` / `registerColorScheme` /
+  `registerTextScheme` / `registerLayoutScheme` 注册全新的槽位取值。
 
 ---
 
@@ -197,7 +253,7 @@ mfly docs/*.md --quiet
 ```yaml
 ---
 theme: blue # 可选：blue（默认）, emerald, gold, slate, ocean, ocean-dark, forest, champagne, graphite
-color_scheme: champagne # 可选：覆盖主题色彩的色彩方案（ocean, forest, champagne, graphite...）
+color_scheme: champagne # 可选：覆盖主题色彩的色彩方案（ocean, ocean-dark, forest, champagne, graphite）
 text_scheme: kai # 可选：覆盖主题文字的文字方案（system, academic, kai, source-han-serif）
 layout_scheme: folio # 可选：覆盖主题版式的版式方案（legacy, folio, golden, minimal）
 author: "你的名字"
@@ -253,12 +309,14 @@ graph LR
 
 | 指令 | 值 | 效果 |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | 覆盖自动检测的布局 |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `closing` / `image-single` / `image-double` / `image-triple` | 覆盖自动检测的布局 |
 | `notes` | 文本 | 该幻灯片的演讲者备注 |
-| `chart` | `bar` / `line` / `pie` | 将第一个表格渲染为图表 |
+| `chart` | `bar` / `line` / `pie` | 将第一个表格渲染为图表（表格至少 2 列、1 行数据） |
 | `highlight` | `2-4,6` | 高亮幻灯片代码块中的指定行 |
-| `background` | URL/路径 | 幻灯片背景图片 |
+| `background` | URL / 路径 / `#RRGGBB` | 幻灯片背景图片，或纯色背景 |
 | `steps` | `true` | 渐进式展示（保留功能） |
+
+`closing` 只能通过指令触发（自动检测不会产生）：居中的致谢页 —— 页标题作为致谢语（默认 `Thank you`），副标题渲染在其下方（如联系方式）。
 
 ### Callout 卡片
 
@@ -393,7 +451,7 @@ PlantUML 说明：
 @(layout=image-single)
 ```
 
-### 注脚说明
+### 注意事项
 
 - 单独的 `===` 始终表示行分隔 — setext 风格标题（`标题` + `===`）在 mfly 中等同于 `# 一级标题`。
 - 单独的 `<->` 始终表示列分隔；使用 `***text***` 表示粗斜体（moffee 约定的 `<->粗斜体<->` 写法故意未采用，以避免歧义）。

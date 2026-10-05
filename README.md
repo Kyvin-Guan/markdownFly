@@ -20,6 +20,7 @@ Generate beautiful, fully editable `.pptx` in seconds.
 <details>
 <summary>📖 Table of Contents</summary>
 
+- [🧩 Install the Skill](#-install-the-skill)
 - [✨ Features](#-features)
 - [📦 Installation](#-installation)
 - [🚀 Quick Start](#-quick-start)
@@ -37,13 +38,41 @@ Generate beautiful, fully editable `.pptx` in seconds.
   - [Comments (`%%` Draft Lines)](#comments--draft-lines)
   - [Cover Author / Date Lines](#cover-author--date-lines)
   - [Image-Page Auto Layout](#image-page-auto-layout)
-  - [Footnotes](#footnotes)
+  - [Quirks & Gotchas](#quirks--gotchas)
 - [🧪 Testing](#-testing)
 - [🤔 Why MarkdownFly?](#-why-markdownfly)
 - [⭐ Star History](#-star-history)
 - [📄 License](#-license)
 
 </details>
+
+---
+
+## 🧩 Install the Skill
+
+Paste this into your AI assistant (ZCode, Claude Code, or any tool that
+supports Agent Skills) and it installs everything for you:
+
+```text
+Please install the markdownfly skill for me:
+1. Clone https://github.com/Kyvin-Guan/markdownFly.git to a temp directory
+2. Copy its skills/markdownfly/ folder into ~/.agents/skills/markdownfly/
+   (Windows PowerShell: Copy-Item -Recurse <temp>\skills\markdownfly $HOME\.agents\skills\markdownfly)
+3. Confirm when done and give me one example phrase to trigger it
+```
+
+Then, in a fresh session, just say:
+
+> Use markdownfly to make a 5-slide REST API tech talk with an architecture diagram and highlighted code
+
+The agent drafts a preview markdown first, and generates the editable
+`.pptx` after your confirmation or change requests.
+
+- Prerequisite: Node.js 20+. The skill calls `npx markdownfly@0.2`, so no CLI
+  install is needed; to drive it by hand see [📦 Installation](#-installation) below.
+- Manual install: after `git clone`, copy `skills/markdownfly/` into
+  `~/.agents/skills/` (user-level, all projects) or `<project>/.agents/skills/`
+  (that project only).
 
 ---
 
@@ -58,28 +87,8 @@ Generate beautiful, fully editable `.pptx` in seconds.
   - **ECharts**: Bar charts, line charts, pie charts directly from JSON options (via ECharts SSR).
 - 🖼️ **Image Embedding**: Local file paths, remote URLs (`http://`/`https://`), and base64 Data URIs.
 - 📐 **Automatic Layout Detection**: Title slides, section dividers, code spotlights, quotes, and content slides.
+- 🎭 **Theme System**: 4 ready-made theme presets, or compose your own from color × text × layout slots (custom schemes registrable via the library API).
 - ⚡ **Batch Conversion**: Convert multiple files with glob support (`mfly *.md`).
-
----
-
-## 🧩 Install as an Agent Skill
-
-This repo ships a portable [Agent Skill](./skills/markdownfly/SKILL.md): once
-installed, your coding agent writes decks for you — you describe the outcome,
-it writes the markdown, converts with `markdownfly`, and verifies the result.
-
-```bash
-git clone https://github.com/Kyvin-Guan/markdownFly.git
-cp -r markdownFly/skills/markdownfly ~/.agents/skills/
-```
-
-- **ZCode** — user-wide: `~/.agents/skills/` or `~/.zcode/skills/`;
-  per-project: `.agents/skills/`. Then just ask ("做个 5 页的架构分享 PPT")
-  or invoke `/markdownfly`.
-- **Claude Code** — copy to `~/.claude/skills/markdownfly` instead.
-- Nothing else to install: the skill instructs the agent to run
-  `npx -y markdownfly@latest` (needs Node.js 20+), so the CLI itself is
-  fetched on first use.
 
 ---
 
@@ -175,26 +184,74 @@ mfly docs/*.md --quiet
 
 ## 🎨 Built-in Themes
 
-`-t` / frontmatter `theme:` take a **theme name**. Resolution order:
-**theme preset → color scheme**.
+A theme is three slots — **color × text × layout**. `-t` / frontmatter
+`theme:` take a **theme name**, which resolves as **theme preset → color
+scheme**; omitting both uses the default theme **`blue`**.
 
-| Theme name | Kind | Color | Text | Layout | Best For |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`blue`** *(default)* | Preset package | `ocean` | `academic` (SimSun) | `legacy` | Default full theme |
-| `emerald` | Preset package | `forest` | `system` (Microsoft YaHei) | `folio` | Fresh green · editorial layout |
-| `gold` | Preset package | `champagne` | `kai` (KaiTi) | `golden` | Warm gold · golden-ratio layout |
-| `slate` | Preset package | `graphite` | `source-han-serif` (Source Han Serif) | `minimal` | Neutral monochrome · archival layout |
-| `ocean` | Color only | Deep sea ink `#1E4A6F` / Sea-foam paper `#F0F8FF`; primary `#4F9FD9` / secondary `#2D6A9F` | Default `system` | Layout pack off | Recolor only |
-| `ocean-dark` | Color only | Light foam `#D6E7F5` / Deep sea `#0B1C2E`; primary `#5BAAE8` / secondary `#8BBCDD` | Default `system` | Layout pack off | Night / dark decks (inverse of `ocean`) |
-| `forest` | Color only | Deep green ink `#2A4A3F` / Pale green paper `#F0FFF5`; primary `#5F9A8A` / secondary `#3F6A5A` | Default `system` | Layout pack off | Fresh green decks |
-| `champagne` | Color only | Dark gold ink `#CFB53B` / Cream paper `#FFFCE6`; primary `#E5CD5F` / secondary `#F5E08A` | Default `system` | Layout pack off | Warm metallic gold decks |
-| `graphite` | Color only | Dark gray ink `#4D4D4D` / Light gray paper `#F8F8F8`; primary `#D9D9D9` / secondary `#A6A6A6` | Default `system` | Layout pack off | Neutral monochrome decks |
+### Theme presets (color × text × layout in one name)
 
-- Omitting `-t` / `theme` uses the default theme **`blue`**.
-- A theme preset selects color × text × layout in one name; color-scheme names remain valid for recolor-only use.
-- `ocean-dark` is the inverse of `ocean` (same color family), sharing its default text/layout; not listed as a separate preset.
-- **Free composition**: override the theme's color / text / layout slots individually via `--color` / `--text` / `--layout` (or frontmatter `color_scheme` / `text_scheme` / `layout_scheme`).
-- Extend via library APIs `registerThemePreset` / `registerColorScheme` / `registerTextScheme` / `registerLayoutScheme`.
+| Theme name | Color | Text | Layout | Best For |
+| :--- | :--- | :--- | :--- | :--- |
+| **`blue`** *(default)* | `ocean` | `academic` (SimSun) | `legacy` | Default full theme, technical decks |
+| `emerald` | `forest` | `system` (Microsoft YaHei) | `folio` | Fresh green · editorial layout |
+| `gold` | `champagne` | `kai` (KaiTi) | `golden` | Warm gold · golden-ratio layout |
+| `slate` | `graphite` | `source-han-serif` (Source Han Serif) | `minimal` | Neutral monochrome · archival layout |
+
+### Slot menus — compose your own themes
+
+Beyond the four presets, each slot has its own menu of built-in values. Any
+color pairs with any text scheme and any layout scheme, so you can assemble
+far more themes than the preset names suggest.
+
+**Color schemes** (also valid as `-t` names for recolor-only use):
+
+| Name | Ink (text) / Paper (background) | Primary / Secondary | Notes |
+| :--- | :--- | :--- | :--- |
+| `ocean` | `#1E4A6F` / `#F0F8FF` | `#4F9FD9` / `#2D6A9F` | Light sea-blue |
+| `ocean-dark` | `#D6E7F5` / `#0B1C2E` | `#5BAAE8` / `#8BBCDD` | Night / dark decks (inverse of `ocean`) |
+| `forest` | `#2A4A3F` / `#F0FFF5` | `#5F9A8A` / `#3F6A5A` | Fresh green |
+| `champagne` | `#CFB53B` / `#FFFCE6` | `#E5CD5F` / `#F5E08A` | Warm metallic gold |
+| `graphite` | `#4D4D4D` / `#F8F8F8` | `#D9D9D9` / `#A6A6A6` | Neutral monochrome |
+
+**Text schemes**:
+
+| Name | Fonts |
+| :--- | :--- |
+| `system` | Platform system fonts (Microsoft YaHei family) — the default when a theme doesn't specify one |
+| `academic` | SimSun / 宋体, Times-flavored Latin |
+| `kai` | KaiTi / 楷体 |
+| `source-han-serif` | Source Han Serif / 思源宋体 |
+
+**Layout schemes**:
+
+| Name | Character |
+| :--- | :--- |
+| `legacy` | The classic mfly layout pack (default with `blue`) |
+| `folio` | Editorial, book-like spacing |
+| `golden` | Golden-ratio proportions |
+| `minimal` | Reduced chrome, lots of whitespace |
+
+### Composition rules
+
+```bash
+mfly deck.md -t blue --text kai            # blue palette + layout, kai text
+mfly deck.md --color forest --text academic --layout golden   # full custom mix
+mfly deck.md --layout minimal              # layout only, rest of default blue
+```
+
+- Slots can be overridden one at a time via `--color` / `--text` / `--layout`
+  (or frontmatter `color_scheme` / `text_scheme` / `layout_scheme`).
+- Precedence: composition flag > frontmatter scheme > theme preset slot >
+  default `blue`. Composition flags without `-t` use `blue` as the base.
+- A color-only theme name (e.g. `-t ocean`) keeps the default `system` text
+  and the built-in default layout.
+- Unknown names: CLI flags fail with exit `1` and list the valid names. In
+  frontmatter nothing fails — unknown `theme:` warns and falls back to `blue`;
+  unknown `color_scheme` keeps the theme's color; unknown `text_scheme` falls
+  back to `system`; unknown `layout_scheme` falls back to the built-in layout.
+- Library consumers can register entirely new slot values via
+  `registerThemePreset` / `registerColorScheme` / `registerTextScheme` /
+  `registerLayoutScheme`.
 
 ---
 
@@ -211,7 +268,7 @@ mfly docs/*.md --quiet
 ```yaml
 ---
 theme: blue # Options: blue (default), emerald, gold, slate, ocean, ocean-dark, forest, champagne, graphite
-color_scheme: champagne # Optional: color scheme overriding the theme's color (ocean, forest, champagne, graphite...)
+color_scheme: champagne # Optional: color scheme overriding the theme's color (ocean, ocean-dark, forest, champagne, graphite)
 text_scheme: kai # Optional: text scheme overriding the theme's text (system, academic, kai, source-han-serif)
 layout_scheme: folio # Optional: layout scheme overriding the theme's layout (legacy, folio, golden, minimal)
 author: "Your Name"
@@ -267,12 +324,14 @@ A standalone `@(key=value, ...)` line at the bottom of a slide sets per-slide op
 
 | Directive | Value | Effect |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | Override auto-detected layout |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `closing` / `image-single` / `image-double` / `image-triple` | Override auto-detected layout |
 | `notes` | text | Speaker notes for this slide |
-| `chart` | `bar` / `line` / `pie` | Render the first table as a chart |
+| `chart` | `bar` / `line` / `pie` | Render the first table as a chart (table needs ≥2 columns and ≥1 data row) |
 | `highlight` | `2-4,6` | Highlight lines in the slide's code block |
-| `background` | URL/path | Slide background image |
+| `background` | URL / path / `#RRGGBB` | Slide background image, or a solid color |
 | `steps` | `true` | Progressive reveal (reserved) |
+
+`closing` is directive-only (auto-detection never picks it): a centered thank-you page — the slide's title renders as the thank-you text (default `Thank you`) and the subtitle renders below it (e.g. contact info).
 
 ### Callouts
 
@@ -412,7 +471,7 @@ in explicitly, including via the `layout` directive:
 @(layout=image-single)
 ```
 
-### Footnotes
+### Quirks & Gotchas
 
 - A standalone `===` always means a row break — setext-style headlines (`Title` + `===`) are `# Headings` in mfly.
 - A standalone `<->` always means a column break; use `***text***` for bold italic (the moffee convention of `<->bold and italic<->` is deliberately not adopted to avoid ambiguity).
