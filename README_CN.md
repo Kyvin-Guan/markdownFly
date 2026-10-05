@@ -62,6 +62,14 @@
 
 ---
 
+## 🧩 自带 Skill
+
+本仓库内置可移植的 **Agent Skill**：把 `skills/markdownfly/` 复制到
+`~/.agents/skills/`（或项目的 `.agents/skills/`），你的编码 Agent 就能替你驱动完整的 PPT 工作流 —— 详见
+[skills/markdownfly/SKILL.md](./skills/markdownfly/SKILL.md)。
+
+---
+
 ## 📦 安装
 
 需要 Node.js 20+。

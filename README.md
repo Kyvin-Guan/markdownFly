@@ -62,6 +62,15 @@ Generate beautiful, fully editable `.pptx` in seconds.
 
 ---
 
+## 🧩 Skill ready
+
+This repo ships a portable **Agent Skill**: copy `skills/markdownfly/` into
+`~/.agents/skills/` (or your project's `.agents/skills/`) and your coding
+agent can drive the whole deck workflow for you — see
+[skills/markdownfly/SKILL.md](./skills/markdownfly/SKILL.md).
+
+---
+
 ## 📦 Installation
 
 Requires Node.js 20+.
