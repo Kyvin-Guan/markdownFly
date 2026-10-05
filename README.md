@@ -62,12 +62,24 @@ Generate beautiful, fully editable `.pptx` in seconds.
 
 ---
 
-## 🧩 Skill ready
+## 🧩 Install as an Agent Skill
 
-This repo ships a portable **Agent Skill**: copy `skills/markdownfly/` into
-`~/.agents/skills/` (or your project's `.agents/skills/`) and your coding
-agent can drive the whole deck workflow for you — see
-[skills/markdownfly/SKILL.md](./skills/markdownfly/SKILL.md).
+This repo ships a portable [Agent Skill](./skills/markdownfly/SKILL.md): once
+installed, your coding agent writes decks for you — you describe the outcome,
+it writes the markdown, converts with `markdownfly`, and verifies the result.
+
+```bash
+git clone https://github.com/Kyvin-Guan/markdownFly.git
+cp -r markdownFly/skills/markdownfly ~/.agents/skills/
+```
+
+- **ZCode** — user-wide: `~/.agents/skills/` or `~/.zcode/skills/`;
+  per-project: `.agents/skills/`. Then just ask ("做个 5 页的架构分享 PPT")
+  or invoke `/markdownfly`.
+- **Claude Code** — copy to `~/.claude/skills/markdownfly` instead.
+- Nothing else to install: the skill instructs the agent to run
+  `npx -y markdownfly@latest` (needs Node.js 20+), so the CLI itself is
+  fetched on first use.
 
 ---
 

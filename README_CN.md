@@ -62,11 +62,18 @@
 
 ---
 
-## 🧩 自带 Skill
+## 🧩 安装为 Agent Skill
 
-本仓库内置可移植的 **Agent Skill**：把 `skills/markdownfly/` 复制到
-`~/.agents/skills/`（或项目的 `.agents/skills/`），你的编码 Agent 就能替你驱动完整的 PPT 工作流 —— 详见
-[skills/markdownfly/SKILL.md](./skills/markdownfly/SKILL.md)。
+本仓库内置可移植的 [Agent Skill](./skills/markdownfly/SKILL.md)：安装后，你的编码 Agent 就能替你写幻灯片 —— 你描述想要的结果，它负责写 Markdown、调用 `markdownfly` 转换并验收产物。
+
+```bash
+git clone https://github.com/Kyvin-Guan/markdownFly.git
+cp -r markdownFly/skills/markdownfly ~/.agents/skills/
+```
+
+- **ZCode** —— 用户级：`~/.agents/skills/` 或 `~/.zcode/skills/`；项目级：`.agents/skills/`。装好后直接说需求（如"做个 5 页的架构分享 PPT"），或调用 `/markdownfly`。
+- **Claude Code** —— 改为复制到 `~/.claude/skills/markdownfly`。
+- 无需其他安装：skill 会指引 Agent 使用 `npx -y markdownfly@latest`（需 Node.js 20+），CLI 在首次使用时自动获取。
 
 ---
 
