@@ -1,6 +1,6 @@
 ---
 name: markdownfly
-description: Generate PowerPoint (.pptx) presentations from Markdown with the markdownfly (mfly) CLI — editable 16:9 slides, themes, syntax-highlighted code, and Mermaid/Graphviz/PlantUML/ECharts diagrams. Use whenever the user wants to create, draft, or convert slides — "make a PPT", tech talk, report deck, 做个PPT, 幻灯片, 演示文稿, or "turn this markdown into slides" — even if pptx is not spelled out. Not for programmatically editing an existing .pptx file (use a pptx-editing skill for that).
+description: Generate PowerPoint (.pptx) presentations from Markdown with the markdownfly (mfly) CLI — editable 16:9 slides, themes, syntax-highlighted code, and Mermaid/Graphviz/PlantUML/ECharts diagrams. Two ways in: the user names a topic and wants slides drafted from scratch, or the user already has content (an outline, class notes, book text, an essay) to turn into slides. Either way, draft a clean preview markdown, show it, and wait for the user's confirmation or change requests before generating the .pptx. Trigger on "make a PPT", tech talk, report deck, 做个PPT, 幻灯片, 演示文稿, "turn these notes into slides" — even if pptx is not spelled out. Not for programmatically editing an existing .pptx file (use a pptx-editing skill for that).
 ---
 
 # MarkdownFly (mfly) — Markdown to PowerPoint
@@ -22,19 +22,54 @@ blocked until the skill itself is updated.
 
 ## Workflow
 
-### 1. Gather requirements
+Two entry modes share one pipeline: **preview first, generate only after
+confirmation**. Never run the converter before the user has seen the preview.
 
-Before writing, establish (ask only what the user didn't say): audience,
+### 1. Identify the entry mode, then set style
+
+- **Mode 1 — topic given**: the user supplies a subject ("a 5-page talk on
+  REST APIs") and expects you to draft the content. Plan the slide flow
+  first (cover → sections → summary), one idea per slide.
+- **Mode 2 — content given**: the user supplies an outline, class notes,
+  book text, or an essay. Restructure it into slide-sized ideas rather than
+  pasting blocks verbatim; note anything you dropped or merged.
+
+Either way, establish (ask only what the user didn't say): audience,
 language, rough slide count, and style. Map style to a theme: technical →
 `blue` (default) or `ocean-dark`; warm/humanities → `gold`; fresh/editorial →
 `emerald`; neutral minimal → `slate`. Read [references/themes.md](references/themes.md)
 before customizing colors/fonts/layouts beyond the preset names.
 
-### 2. Write the deck markdown
+### 2. Show the preview markdown and wait
 
-One file, slides separated by `---`. `#` makes the cover, `##` makes content
-or section slides. One idea per slide. Tag every fenced code block with its
-language (Shiki highlights 20+ languages). Diagrams are fenced code blocks too:
+Write the deck as plain, readable Markdown — no mfly syntax yet. Slide
+titles plus content; mark planned diagrams as placeholders:
+
+```markdown
+# REST API Design
+
+## Architecture
+
+(diagram: client → gateway → services, auth checked at the gateway)
+
+### Key points
+
+- Stateless auth
+- Versioned from day one
+```
+
+Save it to a file (e.g. `deck.md`), show it inline in the conversation, and
+ask for confirmation or change requests. **Stop and wait here.** Iterate on
+the preview until the user accepts it — this preview is the review artifact,
+and the user can edit the file by hand between rounds.
+
+### 3. On confirmation: add mfly syntax, then convert
+
+Only after the user confirms (or after applying their change requests):
+
+1. Upgrade the confirmed markdown into final deck form — `---` separators,
+   `#` cover / `##` slides, frontmatter with the chosen theme, real diagram
+   code blocks in place of the placeholders, and `@(notes=...)` speaker notes:
 
 ````markdown
 ---
@@ -65,22 +100,14 @@ graph LR
 - Horizontally scalable
 
 @(notes=Walk through the request path left to right here.)
-
----
-
-## Summary
-
-> [!TIP]
-> Ship small, ship often.
 ````
 
-Default rule: write plain, predictable Markdown and let auto-layout do its
-job. Read [references/markdown-syntax.md](references/markdown-syntax.md)
-before using grid markers (`<->`, `===`), image sizing params, per-slide
-directives beyond `notes`, or non-mermaid diagram languages — the exact
-grammar lives there.
+   Read [references/markdown-syntax.md](references/markdown-syntax.md) before
+   using grid markers (`<->`, `===`), image sizing params, per-slide
+   directives beyond `notes`, or non-mermaid diagram languages — the exact
+   grammar lives there.
 
-### 3. Convert
+2. Convert:
 
 ```bash
 npx -y markdownfly@0.2 deck.md --json
@@ -144,6 +171,10 @@ layout: code           # default layout for content slides (rarely needed)
 
 ## Pitfalls
 
+- **The preview gate is the contract**: mode 1 and mode 2 both end step 2
+  with a wait. Only skip it when the user explicitly opts out ("直接生成" /
+  "just generate it") — then go straight to step 3 with the theme you would
+  have proposed.
 - Image paths (and `resource_dir`) resolve against the **markdown file's
   directory**, never the shell's cwd — run the CLI from anywhere.
 - A missing/broken image or failed remote fetch → stderr warning, deck still
