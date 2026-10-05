@@ -121,6 +121,26 @@ centered in its column):
 - **Failure mode**: missing or unfetchable images are skipped with a stderr warning; the deck is still produced.
 - **Security**: paths are resolved without restrictions — only convert markdown you trust.
 
+## Videos
+
+An image line whose source is a video file embeds a native, playable video
+(like PowerPoint's Insert → Video on my PC) instead of a picture:
+
+```markdown
+![Product demo](./assets/demo.mp4)
+![Tutorial](./assets/demo.mp4){w=6in,align=left}
+![Walkthrough](./assets/demo.mp4){poster=cover.png,w=80%}
+```
+
+- **Local files only**: resolved against the markdown file's directory (or `resource_dir`), like images. A missing file is skipped with a warning.
+- **Formats**: `mp4`, `m4v`, `mov`, `mkv`, `avi`, `wmv`, `webm`. H.264 MP4 has the best PowerPoint compatibility — recommend it.
+- **No online videos**: an `http(s)` URL is rejected with a warning; download the file and reference it locally instead.
+- **Sizing keys**: same `w`/`h`/`align` params as images; without them the video is fit to the column at an assumed 16:9 (use `{w=...,h=...}` when the aspect differs).
+- **Cover**: `{poster=cover.png}` sets the pre-play cover (PNG only, a non-PNG warns) and always wins. Without it a real frame is extracted with tools already on the machine — ffmpeg on PATH, else the native OS thumbnailer (Windows shell thumbnail / macOS Quick Look); shell thumbnails under 640px wide are rejected as too blurry. If no usable frame is available, a themed cover card is rendered in the theme color, so PowerPoint's gray default never appears (a stderr note reports the fallback).
+- The same video referenced twice on one slide is embedded once (content-hash dedupe).
+- Videos render on **content slides** (auto-detected or default). They do not fit the `image-single/double/triple` slot layouts — a warning points there if one is forced via `@(layout=image-*)`.
+- The video file is embedded into the pptx verbatim, so the deck grows by the file's size.
+
 ## Code Blocks
 
 Tag the fence with a language for Shiki token highlighting (javascript,

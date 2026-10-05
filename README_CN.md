@@ -2,14 +2,14 @@
 
 # 🚀 MarkdownFly (mfly)
 
-**面向开发者的 Markdown 转 PowerPoint (.pptx) CLI 工具。**  
-用 Markdown 写幻灯片，内置语法高亮和图表渲染。  
-几秒内生成美观、可二次编辑的 `.pptx`。
+**用 Markdown 写幻灯片，秒级导出原生可编辑 `.pptx`**  
+无需无头浏览器，无需 JVM，只需 Node
 
 [![npm version](https://img.shields.io/npm/v/markdownfly?style=flat-square&color=2563EB)](https://www.npmjs.com/package/markdownfly)
 [![npm downloads](https://img.shields.io/npm/dm/markdownfly?style=flat-square&color=38BDF8)](https://www.npmjs.com/package/markdownfly)
 [![license](https://img.shields.io/npm/l/markdownfly?style=flat-square&color=22C55E)](./LICENSE)
 [![node](https://img.shields.io/node/v/markdownfly?style=flat-square&color=F59E0B)](https://nodejs.org)
+[![works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor%20%C2%B7%20OpenCode-6366f1)](#-安装-skill)
 
 [English](./README.md) · [简体中文](./README_CN.md)
 
@@ -33,6 +33,7 @@
   - [Callout 卡片](#callout-卡片)
   - [任务清单](#任务清单)
   - [图片](#图片)
+  - [视频](#视频)
   - [语法高亮代码块](#语法高亮代码块)
   - [图表代码块](#图表代码块)
   - [注释（`%%` 草稿行）](#注释-草稿行)
@@ -50,40 +51,46 @@
 
 ## 🧩 安装 SKILL
 
-把下面这段话直接发给你的 AI 助手（ZCode / Claude Code 等支持 Agent Skills 的工具），它会自动完成安装：
+把下面这段话发给你的 AI 助手（ZCode、Claude Code 等支持 Agent Skills 的工具）—— 它会全程自动完成安装：
 
 ```text
 请帮我安装 markdownfly skill：
-1. 克隆 https://github.com/Kyvin-Guan/markdownFly.git 到临时目录
+1. 克隆仓库 https://github.com/Kyvin-Guan/markdownFly.git 到临时目录
 2. 把其中的 skills/markdownfly/ 完整复制到 ~/.agents/skills/markdownfly/
    （Windows PowerShell: Copy-Item -Recurse <临时目录>\skills\markdownfly $HOME\.agents\skills\markdownfly）
-3. 完成后告诉我已装好，并给我一句可以触发的示例
+3. 完成后告诉我已装好，并教我怎么使用这个skill
+---
+如果出现网络或安装错误：
+方案1：使用skillhub平台安装skill:请根据 https://skillhub.cn/install/skillhub.md，安装 @user_48c8aa39/markdownfly。
+方案2：将仓库地址换成 https://gitee.com/gitee-guan/markdownFly.git 进行操作。
+
 ```
 
-安装后新开会话，直接说：
+安装后新开会话，随口说一句：
 
 > 用 markdownfly 做一个 5 页的 REST API 技术分享，要有架构图和代码高亮
 
-Agent 会先给出 PPT 预览 markdown，你确认或提修改意见后，再生成可编辑的 `.pptx`。
+Agent 会先给出 Markdown 草稿预览，你确认或提修改意见后，再生成可编辑的 `.pptx`。
 
-- 前提：Node.js 20+。skill 内部通过 `npx markdownfly@0.2` 调用，无需先安装 CLI；想自己用命令行见下方 [📦 安装](#-安装)。
-- 手动安装：`git clone` 后把 `skills/markdownfly/` 复制到 `~/.agents/skills/`（用户级，所有项目可用）或 `<项目>/.agents/skills/`（仅该项目可用）。
+**前提：** Node.js 20+，skill 内部通过 `npx` 调用 CLI，无需手动安装。  
+**手动安装：** 把 `skills/markdownfly/` 复制到 `~/.agents/skills/`（全局）或 `<项目>/.agents/skills/`（仅该项目）。
 
 ---
 
 ## ✨ 功能特性
 
-- 📑 **Markdown 转 PowerPoint**：将标准 Markdown 转换为可编辑的 16:9 宽屏 `.pptx` 幻灯片。
-- 🎨 **语法高亮**：由 [Shiki](https://shiki.style/) 驱动的 Token 级代码高亮（Python、TypeScript、Go、Rust、Java、C++、Bash、SQL 等 20+ 语言）。
-- 📊 **内置图表渲染（无需 JVM、无需无头浏览器）**：
-  - **Mermaid**：流程图、时序图、状态图、类图。
-  - **Graphviz / DOT**：网络图、有限状态机、架构拓扑（via WASM）。
-  - **PlantUML**：时序、类、活动、状态、组件和用例图（TeaVM 编译引擎 — 无需 JVM）。
-  - **ECharts**：直接从 JSON 选项生成柱状图、折线图、饼图（via ECharts SSR）。
-- 🖼️ **图片嵌入**：本地文件路径、远程 URL（`http://`/`https://`）和 base64 Data URI。
-- 📐 **自动布局检测**：标题页、章节分隔、代码展示、引用和内容幻灯片。
-- 🎭 **主题系统**：4 个开箱即用的主题预设，也可用色彩 × 文字 × 版式槽位自由拼装出自定义主题（支持通过库 API 注册全新方案）。
-- ⚡ **批量转换**：支持 glob 表达式批量转换（`mfly *.md`）。
+- 📑 **Markdown → 可编辑 .pptx**：标准 Markdown 直接生成可在 PowerPoint 中继续编辑的 16:9 宽屏幻灯片。
+- 🎨 **Token 级语法高亮**：[Shiki](https://shiki.style/) 驱动，支持 Python、TypeScript、Go、Rust、Java、C++、Bash、SQL 等 20+ 语言。
+- 📊 **4 种图表引擎 — 无需 JVM，无需无头浏览器**：
+  - **Mermaid** — 流程图、时序图、状态图、类图
+  - **Graphviz / DOT** — 网络图、有限状态机、架构拓扑（WASM）
+  - **PlantUML** — 时序、类、活动、组件图等（TeaVM — 零 JVM 依赖）
+  - **ECharts** — 从 JSON 直接渲染柱状图、折线图、饼图（SSR）
+- 🖼️ **灵活的图片支持**：本地路径、远程 URL、base64 Data URI；SVG 自动光栅化，兼容所有阅读器。
+- 🎬 **原生视频嵌入**：`![demo](demo.mp4)` 插入本地视频，放映时可直接在幻灯片内播放，支持自定义封面。
+- 📐 **智能自动布局**：自动识别标题页、章节页、代码页、引用页和图片页，无需手动指令。
+- 🎭 **可组合主题系统**：4 个开箱即用预设（`blue` · `emerald` · `gold` · `slate`），或自由拼装色彩 × 文字 × 版式槽位。
+- ⚡ **批量转换 & CI 友好**：`mfly *.md`、`--json` 输出、`--quiet` 静默模式，随时接入流水线。
 
 ---
 
@@ -360,6 +367,22 @@ graph LR
 - `svg` 在嵌入时会光栅化为 PNG（宽 1200px），在所有阅读器中渲染一致。会保留作者的原始框架，包括 viewBox 中内置的任何边距。代价是：文档携带的是栅格而非矢量，不再无损缩放，且 SVG 较多的文档体积更大。
 - ⚠ 安全：图片路径（`![](...)` 和 `@(background=...)`）解析时无任何限制 — 请只转换您自己拥有或信任的 Markdown。
 
+### 视频
+
+图片行的源是视频文件时，会嵌入原生可播放的视频 — 等同于 PowerPoint 的"插入 → 此设备上的视频"：
+
+```markdown
+![产品演示](./assets/demo.mp4)
+![教程](./assets/demo.mp4){w=6in,align=left,poster=cover.png}
+```
+
+- 仅支持本地文件，路径解析规则与图片一致（相对于 Markdown 文件或 `resource_dir`）；文件缺失时跳过并输出警告。不支持在线 `http(s)` 链接 — 会拒绝并提示先下载到本地。
+- 格式：`mp4`、`m4v`、`mov`、`mkv`、`avi`、`wmv`、`webm`。H.264 编码的 MP4 在 PowerPoint 中兼容性最好。
+- 尺寸键与图片相同（`w`/`h`/`align`）；不指定时按 16:9 适配列宽。
+- `{poster=cover.png}` 设置播放前显示的封面图（仅限 PNG），始终优先。不指定时会用机器上已有的工具自动提取真实画面帧（PATH 上的 ffmpeg、Windows 系统缩略图、macOS 快速预览）；全部不可用时自动生成主题色封面卡片 — 不会出现灰色默认框。
+- 同一视频在同一页引用多次只嵌入一份。
+- 视频在内容页布局中渲染，不适用 `image-single/double/triple` 图片页槽位。视频文件原样嵌入，文档体积会随之增大。
+
 ### 语法高亮代码块
 
 `````markdown
@@ -480,7 +503,7 @@ pnpm test
 | 导出后幻灯片可二次编辑 | ✅ | ❌ | ❌ | ❌ |
 | 幻灯片内网格布局 | ✅ `<->` / `===` | ❌ | ⚠️ | ❌ |
 
-> **一句话总结** — MarkdownFly 是唯一能输出**原生可编辑 `.pptx`**、支持全套图表、**无需 JVM 与无头浏览器**的工具。
+> **一句话总结** — MarkdownFly 是唯一无需 JVM 和无头浏览器、支持全套图表渲染，并导出可继续用 PowerPoint 编辑的 `.pptx` 的 Markdown 工具。
 
 ---
 

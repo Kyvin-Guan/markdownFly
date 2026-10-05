@@ -2,14 +2,14 @@
 
 # 🚀 MarkdownFly (mfly)
 
-**Markdown to PowerPoint (.pptx) — the CLI tool built for developers.**  
-Write slides in Markdown with syntax-highlighted code and embedded diagrams.  
-Generate beautiful, fully editable `.pptx` in seconds.
+**Write slides in Markdown. Export native, fully editable `.pptx` in seconds.**  
+No headless browser. No JVM. Just Node.
 
 [![npm version](https://img.shields.io/npm/v/markdownfly?style=flat-square&color=2563EB)](https://www.npmjs.com/package/markdownfly)
 [![npm downloads](https://img.shields.io/npm/dm/markdownfly?style=flat-square&color=38BDF8)](https://www.npmjs.com/package/markdownfly)
 [![license](https://img.shields.io/npm/l/markdownfly?style=flat-square&color=22C55E)](./LICENSE)
 [![node](https://img.shields.io/node/v/markdownfly?style=flat-square&color=F59E0B)](https://nodejs.org)
+[![works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor%20%C2%B7%20OpenCode-6366f1)](#-install-the-skill)
 
 [English](./README.md) · [简体中文](./README_CN.md)
 
@@ -33,6 +33,7 @@ Generate beautiful, fully editable `.pptx` in seconds.
   - [Callouts](#callouts)
   - [Task Lists](#task-lists)
   - [Images](#images)
+  - [Videos](#videos)
   - [Code Blocks with Syntax Highlighting](#code-blocks-with-syntax-highlighting)
   - [Diagram Code Blocks](#diagram-code-blocks)
   - [Comments (`%%` Draft Lines)](#comments--draft-lines)
@@ -50,45 +51,47 @@ Generate beautiful, fully editable `.pptx` in seconds.
 
 ## 🧩 Install the Skill
 
-Paste this into your AI assistant (ZCode, Claude Code, or any tool that
-supports Agent Skills) and it installs everything for you:
+Drop this prompt into your AI assistant (ZCode, Claude Code, or any tool that
+supports Agent Skills) — it handles the entire install for you:
 
 ```text
 Please install the markdownfly skill for me:
-1. Clone https://github.com/Kyvin-Guan/markdownFly.git to a temp directory
+1. Clone the repository https://github.com/Kyvin-Guan/markdownFly.git to a temp directory
 2. Copy its skills/markdownfly/ folder into ~/.agents/skills/markdownfly/
    (Windows PowerShell: Copy-Item -Recurse <temp>\skills\markdownfly $HOME\.agents\skills\markdownfly)
-3. Confirm when done and give me one example phrase to trigger it
+3. Confirm when done and teach me how to use this skill
+---
+If you run into network or installation errors:
+Option 1: install the skill via the SkillHub platform — follow https://skillhub.cn/install/skillhub.md to install @user_48c8aa39/markdownfly.
+Option 2: switch the repository URL to the Gitee mirror: https://gitee.com/gitee-guan/markdownFly.git
+
 ```
 
-Then, in a fresh session, just say:
+Then open a fresh session and say anything like:
 
 > Use markdownfly to make a 5-slide REST API tech talk with an architecture diagram and highlighted code
 
-The agent drafts a preview markdown first, and generates the editable
-`.pptx` after your confirmation or change requests.
+The agent previews a Markdown draft first; generate the `.pptx` after you confirm or request changes.
 
-- Prerequisite: Node.js 20+. The skill calls `npx markdownfly@0.2`, so no CLI
-  install is needed; to drive it by hand see [📦 Installation](#-installation) below.
-- Manual install: after `git clone`, copy `skills/markdownfly/` into
-  `~/.agents/skills/` (user-level, all projects) or `<project>/.agents/skills/`
-  (that project only).
+**Prerequisites:** Node.js 20+. The skill calls the CLI itself via `npx` — no manual install needed.  
+**Manual install:** copy `skills/markdownfly/` to `~/.agents/skills/` (global) or `<project>/.agents/skills/` (project-only).
 
 ---
 
 ## ✨ Features
 
-- 📑 **Markdown to PowerPoint**: Convert standard Markdown to editable 16:9 widescreen `.pptx` slides.
-- 🎨 **Syntax Highlighting**: Token-level code highlighting powered by [Shiki](https://shiki.style/) (Python, TypeScript, Go, Rust, Java, C++, Bash, SQL, and 20+ languages).
-- 📊 **Built-in Diagram Rendering (no JVM, no headless browser needed)**:
-  - **Mermaid**: Flowcharts, sequence diagrams, state diagrams, class diagrams.
-  - **Graphviz / DOT**: Network graphs, finite state machines, architecture topologies (via WASM).
-  - **PlantUML**: Sequence, class, activity, state, component and use-case diagrams (TeaVM-compiled engine — no JVM required).
-  - **ECharts**: Bar charts, line charts, pie charts directly from JSON options (via ECharts SSR).
-- 🖼️ **Image Embedding**: Local file paths, remote URLs (`http://`/`https://`), and base64 Data URIs.
-- 📐 **Automatic Layout Detection**: Title slides, section dividers, code spotlights, quotes, and content slides.
-- 🎭 **Theme System**: 4 ready-made theme presets, or compose your own from color × text × layout slots (custom schemes registrable via the library API).
-- ⚡ **Batch Conversion**: Convert multiple files with glob support (`mfly *.md`).
+- 📑 **Markdown → Editable .pptx**: Standard Markdown becomes a fully editable 16:9 widescreen `.pptx` — open in PowerPoint and keep tweaking.
+- 🎨 **Token-Level Syntax Highlighting**: Powered by [Shiki](https://shiki.style/) — Python, TypeScript, Go, Rust, Java, C++, Bash, SQL, and 20+ more.
+- 📊 **4 Diagram Engines — No JVM, No Headless Browser**:
+  - **Mermaid** — flowcharts, sequence, state, class diagrams
+  - **Graphviz / DOT** — network graphs, FSMs, topology (WASM)
+  - **PlantUML** — sequence, class, activity, component & more (TeaVM — zero JVM)
+  - **ECharts** — bar, line, pie charts from JSON (SSR)
+- 🖼️ **Flexible Images**: Local paths, remote URLs, base64 Data URIs — SVG auto-rasterized for universal reader compatibility.
+- 🎬 **Native Video Embeds**: `![demo](demo.mp4)` inserts a local video that plays right inside the slideshow, cover image included.
+- 📐 **Smart Auto-Layout**: Detects title, section, code, quote, and image pages automatically — no directives needed.
+- 🎭 **Composable Theme System**: 4 presets (`blue` · `emerald` · `gold` · `slate`) or mix color × text × layout slots to build your own.
+- ⚡ **Batch & CI-Ready**: `mfly *.md`, `--json` output, `--quiet` mode — drop it into any pipeline.
 
 ---
 
@@ -375,6 +378,22 @@ A standalone image line renders as a slide element (aspect ratio preserved, cent
 - `svg` is rasterized to a PNG (1200px wide) as it is embedded, so it renders the same in every reader. The author's own framing is kept, including any padding built into the viewBox. The trade-off: the deck carries a raster rather than a vector, so it no longer scales losslessly, and SVG-heavy decks get larger.
 - ⚠ Security: image paths (`![](...)` and `@(background=...)`) are resolved without restrictions — only convert markdown you own or trust.
 
+### Videos
+
+An image line whose source is a video file embeds a native, playable video — the same as PowerPoint's Insert → Video on my PC:
+
+```markdown
+![Product demo](./assets/demo.mp4)
+![Tutorial](./assets/demo.mp4){w=6in,align=left,poster=cover.png}
+```
+
+- Local files only, resolved like image paths (relative to the markdown file or `resource_dir`); a missing file is skipped with a warning. Online `http(s)` URLs are rejected with a warning — download the file first.
+- Formats: `mp4`, `m4v`, `mov`, `mkv`, `avi`, `wmv`, `webm`. H.264 MP4 has the best PowerPoint compatibility.
+- Same sizing keys as images (`w`/`h`/`align`); without them the video fits the column at an assumed 16:9.
+- `{poster=cover.png}` sets the cover shown before playback (PNG) and always wins. Without it, a real frame is extracted with tools already on the machine (ffmpeg on PATH, Windows shell thumbnail, macOS Quick Look); if none is available, a themed cover card is rendered instead — the gray default frame never appears.
+- The same video twice on one slide is embedded once.
+- The video renders on content slides; it does not fit the `image-single/double/triple` slot layouts. The file is embedded verbatim, so the deck grows by its size.
+
 ### Code Blocks with Syntax Highlighting
 
 `````markdown
@@ -500,7 +519,7 @@ pnpm test
 | Editable slides after export | ✅ | ❌ | ❌ | ❌ |
 | In-slide grid layout | ✅ `<->` / `===` | ❌ | ⚠️ | ❌ |
 
-> **TL;DR** — MarkdownFly is the only tool that outputs a **natively editable `.pptx`** with full diagram support — **no JVM, no headless browser**.
+> **TL;DR** — MarkdownFly is the only Markdown→`.pptx` tool that needs **no JVM and no headless browser**, renders all 4 major diagram engines, and exports slides you can keep editing in PowerPoint.
 
 ---
 
