@@ -24,6 +24,24 @@ npx -y --registry=https://registry.npmmirror.com markdownfly@0.2 deck.md --json
 - Read-only diagnosis is always fine: `npm config get registry` shows the
   current registry without changing anything.
 
+## Test a registry before using it
+
+Two read-only commands — neither touches the user's config:
+
+```bash
+# 1) Is the registry reachable? ("PONG": true = healthy; prints response time)
+npm ping --registry=https://registry.npmmirror.com
+
+# 2) Does it actually serve the pinned package? (catches mirror sync lag)
+npm view markdownfly@0.2 version --registry=https://registry.npmmirror.com
+```
+
+- Run `npm ping` across the mirror table below and pick the first that
+  answers PONG; stick with it for the session.
+- `npm view` matters because a mirror can be reachable but **not yet
+  synced**: if it 404s on `markdownfly@0.2` while `npm ping` succeeds, fall
+  back to the official registry for this session (or try the next mirror).
+
 ## Mirrors
 
 | 镜像源名称 | 地址 | 备注 |
