@@ -34,6 +34,9 @@ Generate beautiful, fully editable `.pptx` in seconds.
   - [Images](#images)
   - [Code Blocks with Syntax Highlighting](#code-blocks-with-syntax-highlighting)
   - [Diagram Code Blocks](#diagram-code-blocks)
+  - [Comments (`%%` Draft Lines)](#comments--draft-lines)
+  - [Cover Author / Date Lines](#cover-author--date-lines)
+  - [Image-Page Auto Layout](#image-page-auto-layout)
   - [Footnotes](#footnotes)
 - [🧪 Testing](#-testing)
 - [🤔 Why MarkdownFly?](#-why-markdownfly)
@@ -48,7 +51,7 @@ Generate beautiful, fully editable `.pptx` in seconds.
 
 - 📑 **Markdown to PowerPoint**: Convert standard Markdown to editable 16:9 widescreen `.pptx` slides.
 - 🎨 **Syntax Highlighting**: Token-level code highlighting powered by [Shiki](https://shiki.style/) (Python, TypeScript, Go, Rust, Java, C++, Bash, SQL, and 20+ languages).
-- 📊 **Built-in Diagram Rendering (Zero native binary dependencies)**:
+- 📊 **Built-in Diagram Rendering (no JVM, no headless browser needed)**:
   - **Mermaid**: Flowcharts, sequence diagrams, state diagrams, class diagrams.
   - **Graphviz / DOT**: Network graphs, finite state machines, architecture topologies (via WASM).
   - **PlantUML**: Sequence, class, activity, state, component and use-case diagrams (TeaVM-compiled engine — no JVM required).
@@ -410,14 +413,14 @@ pnpm test
 | :--- | :---: | :---: | :---: | :---: |
 | Output format | ✅ `.pptx` (editable) | PDF / HTML | HTML | HTML |
 | No browser / headless Chrome needed | ✅ | ❌ | ❌ | ❌ |
-| Zero native binary dependencies | ✅ | ❌ | ❌ | ❌ |
+| Diagram rendering without JVM / headless browser | ✅ | ❌ | ❌ | ❌ |
 | Mermaid / Graphviz / PlantUML / ECharts | ✅ All 4 | Mermaid only | Mermaid only | ❌ |
 | CLI-first, CI/CD friendly | ✅ | ✅ | ⚠️ | ❌ |
 | Syntax-highlighted code blocks | ✅ Shiki | ✅ | ✅ | ⚠️ |
 | Editable slides after export | ✅ | ❌ | ❌ | ❌ |
 | In-slide grid layout | ✅ `<->` / `===` | ❌ | ⚠️ | ❌ |
 
-> **TL;DR** — MarkdownFly is the only tool that outputs a **natively editable `.pptx`** with full diagram support and **zero native binary dependencies**.
+> **TL;DR** — MarkdownFly is the only tool that outputs a **natively editable `.pptx`** with full diagram support — **no JVM, no headless browser**.
 
 ---
 
