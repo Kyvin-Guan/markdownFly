@@ -10,7 +10,8 @@ description: Generate PowerPoint (.pptx) presentations from Markdown with the ma
      `markdownfly@0.2` occurrence here and re-verify references/. -->
 
 One Markdown file in, one fully editable `.pptx` out. No JVM, no headless
-browser. Requires Node.js 20+. Run it via npx — no install step:
+browser. Requires Node.js 20+ — enforced by the step-0 preflight, not just
+promised here. Run it via npx — no install step:
 
 ```bash
 npx -y markdownfly@0.2 deck.md
@@ -25,6 +26,25 @@ blocked until the skill itself is updated.
 Two entry modes share one pipeline: **preview first, generate only after
 confirmation**. Never run the converter before the user has seen the preview.
 
+### 0. Preflight — mandatory, run before anything else
+
+Run both checks at the very start of every session that touches this skill
+(they take seconds, and the second one warms the npx cache so the convert
+step won't stall on a download):
+
+```bash
+node --version                    # must print v20 or higher
+npx -y markdownfly@0.2 --version  # must print 0.2.x
+```
+
+- Node < 20 → stop, tell the user to install or upgrade Node.js 20+
+  (https://nodejs.org), and do not continue the workflow.
+- The npx check errors (network/registry failure) → report it to the user;
+  the convert step would fail the same way.
+- The version does not start with `0.2` → a stray global `mfly` install or
+  stale cache is interfering; show the user the actual version output before
+  proceeding.
+
 ### 1. Identify the entry mode, then set style
 
 - **Mode 1 — topic given**: the user supplies a subject ("a 5-page talk on
@@ -34,11 +54,21 @@ confirmation**. Never run the converter before the user has seen the preview.
   book text, or an essay. Restructure it into slide-sized ideas rather than
   pasting blocks verbatim; note anything you dropped or merged.
 
-Either way, establish (ask only what the user didn't say): audience,
-language, rough slide count, and style. Map style to a theme: technical →
-`blue` (default) or `ocean-dark`; warm/humanities → `gold`; fresh/editorial →
-`emerald`; neutral minimal → `slate`. Read [references/themes.md](references/themes.md)
-before customizing colors/fonts/layouts beyond the preset names.
+Either way, establish (ask only what the user didn't say, in one batch, each
+with your proposal so the user can just accept): audience, language, rough
+slide count, and style. Three style calls belong to the user:
+
+- **Theme**: propose one and let the user confirm. Map style to a theme:
+  technical → `blue` (default) or `ocean-dark`; warm/humanities → `gold`;
+  fresh/editorial → `emerald`; neutral minimal → `slate`.
+- **Advanced slot composition**: a preset alone is the default answer. Offer
+  slot overrides when no preset matches or the user cares about the look:
+  `--color` / `--text` / `--layout` (or frontmatter `color_scheme` /
+  `text_scheme` / `layout_scheme`) — menus in
+  [references/themes.md](references/themes.md).
+- **Footer template**: off by default. Offer it for formal or long decks,
+  e.g. `footer: "{title} - {page} / {total}"` — placeholders `{page}`,
+  `{total}`, `{section}`, `{title}`.
 
 ### 2. Show the preview markdown and wait
 
@@ -68,8 +98,9 @@ and the user can edit the file by hand between rounds.
 Only after the user confirms (or after applying their change requests):
 
 1. Upgrade the confirmed markdown into final deck form — `---` separators,
-   `#` cover / `##` slides, frontmatter with the chosen theme, real diagram
-   code blocks in place of the placeholders, and `@(notes=...)` speaker notes:
+   `#` cover / `##` slides, frontmatter with the chosen theme and footer (if
+   enabled), real diagram code blocks in place of the placeholders, and
+   `@(notes=...)` speaker notes:
 
 ````markdown
 ---
@@ -130,7 +161,7 @@ npx -y markdownfly@0.2 deck.md --json
 2. **Read stderr too**: missing images, failed remote fetches, and diagram
    errors print warnings there but the deck is still generated — relay them to
    the user instead of silently passing.
-3. Optional visual check if LibreOffice is available: convert to PNG and
+3. Optional visual check if LibreOffice is available: render to PDF and
    inspect (`soffice --headless --convert-to pdf deck.pptx`). Skip if absent.
 4. Report the absolute output path and any warnings. Never claim diagrams or
    images rendered if stderr said otherwise.

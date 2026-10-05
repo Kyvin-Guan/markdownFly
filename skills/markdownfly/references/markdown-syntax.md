@@ -25,8 +25,11 @@ layout: code             # default layout for content slides
 ---
 ```
 
-All fields optional. Unknown theme names warn and fall back to `blue`; unknown
-scheme names in frontmatter behave the same. CLI flags override frontmatter.
+All fields optional. CLI flags override frontmatter. Unknown names in
+frontmatter never fail the deck: unknown `theme:` warns and falls back to
+`blue`; unknown `color_scheme` keeps the theme's color; unknown `text_scheme`
+falls back to `system`; unknown `layout_scheme` falls back to the built-in
+layout pack.
 
 ## In-slide grid layout
 
@@ -64,14 +67,18 @@ A standalone `@(key=value, ...)` line at the bottom of a slide sets options:
 
 | Directive | Value | Effect |
 | :--- | :--- | :--- |
-| `layout` | `title` / `section` / `content` / `code` / `quote` / `image-single` / `image-double` / `image-triple` | Override auto-detected layout |
+| `layout` | `title` / `section` / `content` / `code` / `quote` / `closing` / `image-single` / `image-double` / `image-triple` | Override auto-detected layout |
 | `notes` | text | Speaker notes (added to the pptx notes pane) |
-| `chart` | `bar` / `line` / `pie` | Render the slide's first table as an ECharts chart |
+| `chart` | `bar` / `line` / `pie` | Render the slide's first table as an ECharts chart (table needs ≥2 columns and ≥1 data row) |
 | `highlight` | `2-4,6` | Highlight those lines in the slide's code block |
 | `background` | URL or path | Slide background image (`#RRGGBB` also accepted as a color) |
 | `steps` | `true` | Progressive reveal (reserved, no effect yet) |
 
 Example: `@(chart=bar, notes=walk through Q1-Q2 here)`
+
+`closing` is directive-only (auto-detection never picks it): a centered
+thank-you page — the slide's title renders as the thank-you text (default
+`Thank you`) and the subtitle renders below it (e.g. contact info).
 
 ## Callouts
 

@@ -55,8 +55,10 @@ mfly deck.md --layout minimal              # layout only, rest of blue
 
 Frontmatter equivalents: `color_scheme:` / `text_scheme:` / `layout_scheme:`.
 
-Unknown names fail with exit `1` and list valid options (CLI), or warn and
-fall back (frontmatter).
+Unknown names: CLI flags fail with exit `1` and list valid options. In
+frontmatter nothing fails — unknown `theme:` warns and falls back to `blue`;
+unknown scheme values warn and fall back to that slot's default (color keeps
+the theme's color, text falls back to `system`, layout to the built-in pack).
 
 ## Extending programmatically
 
