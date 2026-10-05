@@ -39,8 +39,11 @@ npx -y markdownfly@0.2 --version  # must print 0.2.x
 
 - Node < 20 → stop, tell the user to install or upgrade Node.js 20+
   (https://nodejs.org), and do not continue the workflow.
-- The npx check errors (network/registry failure) → report it to the user;
-  the convert step would fail the same way.
+- The npx check fails with a network error (timeout, `ECONNRESET`, "fetch
+  failed") → read [references/npm-mirrors.md](references/npm-mirrors.md) and
+  retry with a **temporary** mirror via a per-command `--registry` flag.
+  Never rewrite the user's npm config. If every mirror fails, report to the
+  user.
 - The version does not start with `0.2` → a stray global `mfly` install or
   stale cache is interfering; show the user the actual version output before
   proceeding.
