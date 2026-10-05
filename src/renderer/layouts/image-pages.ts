@@ -117,6 +117,15 @@ export async function renderImageSlide(
   ctx: RenderContext,
   slots: ImageSlots,
 ): Promise<void> {
+  // Image layouts pick slots by `type === 'image'`; a video here would be
+  // silently dropped, so point the author at the layout that renders it.
+  if (node.elements.some((e) => e.type === 'video')) {
+    log.warn(
+      `[${node.title ?? 'slide'}] video cannot be placed in image layouts — ` +
+        `remove @(layout=image-*) (or move the video to a regular slide) so it renders as playable media`,
+    );
+  }
+
   const spec = specFor(theme, slots);
 
   // minimal 图文页：页标题 + 短横线 + 虚线图片占位框 + 页脚

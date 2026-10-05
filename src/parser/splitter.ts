@@ -15,6 +15,7 @@ import type {
   CodeElement,
   ImageElement,
   TableElement,
+  VideoElement,
   BlockquoteElement,
   DiagramElement,
   BreakElement,
@@ -27,6 +28,19 @@ import { normalizeDiagramLanguage } from '../diagrams/languages.js';
 const CALLOUT_VARIANTS = new Set([
   'note', 'info', 'tip', 'success', 'warning', 'caution', 'danger',
 ]);
+
+/**
+ * Video file extensions embedded as playable media. Local files only — a
+ * remote URL stays a video element and is rejected at render time with a
+ * pointer at the fix, mirroring PowerPoint's insert-video-from-file flow.
+ */
+const VIDEO_EXTENSIONS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'avi', 'wmv', 'webm']);
+
+/** An image node pointing at a video file is media, not a picture. */
+function isVideoSrc(url: string): boolean {
+  const ext = url.split(/[?#]/)[0].split('.').pop()?.toLowerCase() ?? '';
+  return VIDEO_EXTENSIONS.has(ext);
+}
 
 /**
  * Recursively extract plain text from mdast inline/phrasing nodes
@@ -133,12 +147,15 @@ function parseCallout(content: string): CalloutElement | null {
 }
 
 /**
- * Parse a `{w=6in,h=40mm,align=left}` suffix into image element params.
- * Keys: w/width, h/height, align. Invalid pieces are silently ignored, so a
- * `![alt](src){w=200}` line still renders the image.
+ * Parse a `{w=6in,h=40mm,align=left}` suffix into media element params.
+ * Keys: w/width, h/height, align, poster (video cover image). Invalid pieces
+ * are silently ignored, so a `![alt](src){w=200}` line still renders the image.
+ * `poster` is consumed by video elements; images ignore it.
  */
-function parseImageParams(text: string): Pick<ImageElement, 'width' | 'height' | 'align'> {
-  const result: Pick<ImageElement, 'width' | 'height' | 'align'> = {};
+function parseMediaParams(
+  text: string,
+): Pick<ImageElement, 'width' | 'height' | 'align'> & { poster?: string } {
+  const result: Pick<ImageElement, 'width' | 'height' | 'align'> & { poster?: string } = {};
   const body = text.replace(/^\{\s*|\s*\}$/g, '');
   for (const part of body.split(',')) {
     const eq = part.indexOf('=');
@@ -162,6 +179,10 @@ function parseImageParams(text: string): Pick<ImageElement, 'width' | 'height' |
         if (value === 'left' || value === 'center' || value === 'right') {
           result.align = value as ImageAlign;
         }
+        break;
+      }
+      case 'poster': {
+        if (value) result.poster = value;
         break;
       }
     }
@@ -209,14 +230,24 @@ function nodeToElement(node: Content): SlideElement | null {
             .join('')
             .trim();
           const match = suffix.match(/^\{.*\}$/);
-          return match ? parseImageParams(match[0]) : null;
+          return match ? parseMediaParams(match[0]) : null;
         })();
         if (paramsFromText !== null) {
+          const { poster, ...params } = paramsFromText;
+          if (isVideoSrc(first.url)) {
+            return {
+              type: 'video',
+              src: first.url,
+              alt: first.alt ?? undefined,
+              poster,
+              ...params,
+            } satisfies VideoElement;
+          }
           return {
             type: 'image',
             src: first.url,
             alt: first.alt ?? undefined,
-            ...paramsFromText,
+            ...params,
           } satisfies ImageElement;
         }
       }
@@ -267,6 +298,13 @@ function nodeToElement(node: Content): SlideElement | null {
     }
 
     case 'image': {
+      if (isVideoSrc(node.url)) {
+        return {
+          type: 'video',
+          src: node.url,
+          alt: node.alt ?? undefined,
+        } satisfies VideoElement;
+      }
       return {
         type: 'image',
         src: node.url,

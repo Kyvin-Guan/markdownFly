@@ -21,6 +21,16 @@ import { extraNumber, extraString, layoutSpec, resolveSideMargins, specNumber } 
 export interface RenderContext {
   highlightCode: (code: string, language: string, highlightLines?: number[]) => Promise<PptxGenJS.TextProps[]>;
   resolveImage: (src: string) => Promise<ImageResolution>;
+  /** Local video files only — remote URLs resolve to a rejection with guidance */
+  resolveVideo: (src: string) => Promise<ImageResolution>;
+  /**
+   * Cover payload for a video embed (poster param → extracted frame → themed
+   * card); undefined only when even the themed card failed to render.
+   */
+  resolveVideoCover: (
+    videoPath: string,
+    poster?: string,
+  ) => Promise<{ data: string; source: 'poster' | 'frame' | 'themed' } | undefined>;
   renderDiagram: (diagramType: string, code: string) => Promise<Buffer>;
   /** Page footer template with {page}/{total}/{section}/{title} placeholders */
   footerTemplate?: string;

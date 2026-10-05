@@ -97,6 +97,21 @@ export interface TableElement {
   rows: string[][];
 }
 
+/** A local video file embedded as playable media (`![alt](demo.mp4)`) */
+export interface VideoElement {
+  type: 'video';
+  /** Local file path (relative to the markdown file or absolute) */
+  src: string;
+  alt?: string;
+  /** Optional size from `![alt](src){w=6in}` — normalized to inches or % */
+  width?: string;
+  height?: string;
+  /** Horizontal alignment inside the column (default 'center') */
+  align?: ImageAlign;
+  /** Optional cover image shown before the video plays (`{poster=cover.png}`) */
+  poster?: string;
+}
+
 export interface BlockquoteElement {
   type: 'blockquote';
   content: string;
@@ -115,6 +130,7 @@ export type SlideElement =
   | CodeElement
   | ImageElement
   | TableElement
+  | VideoElement
   | BlockquoteElement
   | DiagramElement
   | BreakElement

@@ -34,6 +34,37 @@ export async function resolveImage(
 }
 
 /**
+ * Resolve a video source to a local file path. Local-only by design —
+ * mirroring PowerPoint's insert-video-from-file flow, a remote URL is not
+ * downloaded (a demo video can be hundreds of MB) but rejected with a
+ * pointer at the fix. Never throws — failures are returned as { ok: false }.
+ */
+export async function resolveVideo(
+  src: string,
+  basePath: string,
+): Promise<ImageResolution> {
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return {
+      ok: false,
+      error: `Online videos are not supported — download the file and reference it locally: ${src}`,
+    };
+  }
+  if (src.startsWith('data:')) {
+    return {
+      ok: false,
+      error: 'Inline data URIs are not supported for videos — reference a local file',
+    };
+  }
+  try {
+    const absolutePath = resolve(basePath, src);
+    if (existsSync(absolutePath)) return { ok: true, path: absolutePath };
+    return { ok: false, error: `Video not found: ${src} (resolved to ${absolutePath})` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Replace an SVG with a PNG raster of it.
  *
  * Done here rather than at the point of use because everything funnels through

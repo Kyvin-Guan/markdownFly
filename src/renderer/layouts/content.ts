@@ -16,6 +16,7 @@ import { fitInBox, fitImageWithOptions } from '../../utils/image-fit.js';
 import { tableToChartOption } from '../../utils/table-chart.js';
 import { log } from '../../utils/progress.js';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import {
   addHRuler,
   extraBoolean,
@@ -83,6 +84,17 @@ const IMAGE_MIME: Record<string, string> = {
   webp: 'image/webp',
   bmp: 'image/bmp',
   svg: 'image/svg+xml',
+};
+
+/** Extension → MIME map used when embedding local videos as base64 data */
+const VIDEO_MIME: Record<string, string> = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  mkv: 'video/x-matroska',
+  avi: 'video/x-msvideo',
+  wmv: 'video/x-ms-wmv',
 };
 
 /** Vertical space available below the title bar */
@@ -312,6 +324,17 @@ function estimateColumnHeight(elements: SlideElement[], w: number, theme: Theme)
           h += parseFloat(el.width) * 0.5 + 0.2;
         } else {
           h += Math.min(4.5, Math.max(1.2, w * 0.5));
+        }
+        break;
+      case 'video':
+        // Same shape as image, but a video's natural size is unknown without a
+        // probe — 16:9 is the assumption the renderer makes, mirrored here.
+        if (el.height && !el.height.endsWith('%')) {
+          h += parseFloat(el.height) + 0.2;
+        } else if (el.width && !el.width.endsWith('%')) {
+          h += parseFloat(el.width) * 0.5625 + 0.2;
+        } else {
+          h += Math.min(4.5, Math.max(1.2, w * 0.5625));
         }
         break;
       case 'table':
@@ -560,6 +583,55 @@ async function renderElement(
       } catch (err) {
         log.warn(
           `Failed to embed image ${element.src}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      return 0;
+    }
+
+    case 'video': {
+      try {
+        const resolved = await ctx.resolveVideo(element.src);
+        if (!resolved.ok) {
+          log.warn(`[${node.title ?? 'slide'}] ${resolved.error}`);
+          return 0;
+        }
+        // A video's natural size is unknown without a probe; 16:9 is the
+        // common shape for demo exports, and {w=...,h=...} overrides it.
+        const placed = fitImageWithOptions(
+          { width: 16, height: 9 },
+          { width: w, height: Math.max(1.2, maxH) },
+          { width: element.width, height: element.height, align: element.align },
+        );
+        const ext = resolved.path.split('.').pop()?.toLowerCase() ?? 'mp4';
+        // `data` (not a real `path`): pptxgenjs reads `path` media via
+        // `require('fs')`, which does not exist under Node ESM — the same
+        // reason images pass preencoded data. `extn` names the part inside
+        // the pptx; the data header is only format-checked, never used for
+        // the content type (`video/<extn>` lands in [Content_Types].xml).
+        const mime = VIDEO_MIME[ext] ?? 'video/mp4';
+        const fileData = readFileSync(resolved.path);
+        // Cover: explicit poster → extracted frame → themed card, so the
+        // gray pptxgenjs default never ships. The `path` carries a content
+        // hash (with `data` present it is never read from disk): pptxgenjs
+        // dedupes media by it, so the same video twice on one slide embeds
+        // once instead of doubling the deck size.
+        const cover = await ctx.resolveVideoCover(resolved.path, element.poster);
+        slide.addMedia({
+          type: 'video',
+          data: `${mime};base64,${fileData.toString('base64')}`,
+          path: `preencoded-${createHash('sha1').update(fileData).digest('hex').slice(0, 16)}.${ext}`,
+          extn: ext,
+          ...(cover ? { cover: cover.data } : {}),
+          x: x + placed.x,
+          y: yPos,
+          w: placed.width,
+          h: placed.height,
+          objectName: element.alt || element.src,
+        });
+        return placed.height + 0.2;
+      } catch (err) {
+        log.warn(
+          `Failed to embed video ${element.src}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
       return 0;

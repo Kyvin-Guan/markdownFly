@@ -8,7 +8,8 @@ import type { Presentation } from '../models/slide.js';
 import type { Theme } from '../models/theme.js';
 import { renderSlideLayout } from './layouts/index.js';
 import { highlightCode } from './code-highlighter.js';
-import { resolveImage } from './image-handler.js';
+import { resolveImage, resolveVideo } from './image-handler.js';
+import { resolveVideoCover } from './video-cover.js';
 import { renderDiagram } from '../diagrams/index.js';
 import { slideBackground } from './background.js';
 
@@ -47,6 +48,21 @@ export async function renderPresentation(
     resolveImage: async (src: string) => {
       return resolveImage(src, resourceBase);
     },
+    resolveVideo: async (src: string) => {
+      return resolveVideo(src, resourceBase);
+    },
+    resolveVideoCover: (() => {
+      // Frames are extracted with external tools; never pay for the same
+      // video twice within one conversion.
+      const cache = new Map<string, { data: string; source: 'poster' | 'frame' | 'themed' } | undefined>();
+      return async (videoPath: string, poster?: string) => {
+        const key = `${videoPath}\u0000${poster ?? ''}`;
+        if (!cache.has(key)) {
+          cache.set(key, await resolveVideoCover(videoPath, poster, theme, resourceBase));
+        }
+        return cache.get(key);
+      };
+    })(),
     renderDiagram: async (diagramType: string, code: string) => {
       return renderDiagram(diagramType, code, theme);
     },
