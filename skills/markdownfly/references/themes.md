@@ -3,16 +3,16 @@
 Theme selection grammar for markdownfly v0.2. `-t` / frontmatter `theme:`
 take a **theme name**; resolution order is **theme preset → color scheme**.
 
-## Theme presets (color × text × layout in one name)
+## Theme Presets (color × text × layout in one name)
 
 | Theme name | Color | Text | Layout | Best for |
 | :--- | :--- | :--- | :--- | :--- |
-| **`blue`** *(default)* | `ocean` | `academic` (SimSun/宋体) | `legacy` | Default full theme, technical decks |
-| `emerald` | `forest` | `system` (Microsoft YaHei/微软雅黑) | `folio` | Fresh green, editorial |
-| `gold` | `champagne` | `kai` (KaiTi/楷体) | `golden` | Warm gold, golden-ratio layout |
-| `slate` | `graphite` | `source-han-serif` (思源宋体) | `minimal` | Neutral monochrome, archival |
+| **`blue`** *(default)* | `ocean` | `academic` (SimSun / 宋体) | `legacy` | Default full theme, technical decks |
+| `emerald` | `forest` | `system` (Microsoft YaHei / 微软雅黑) | `folio` | Fresh green, editorial |
+| `gold` | `champagne` | `kai` (KaiTi / 楷体) | `golden` | Warm gold, golden-ratio layout |
+| `slate` | `graphite` | `source-han-serif` (Source Han Serif / 思源宋体) | `minimal` | Neutral monochrome, archival |
 
-## Color-only names (recolor without changing text/layout)
+## Color-Only Names (recolor without changing text/layout)
 
 | Name | Ink (on light) / paper or inverse | Primary / secondary | Use |
 | :--- | :--- | :--- | :--- |
@@ -22,7 +22,7 @@ take a **theme name**; resolution order is **theme preset → color scheme**.
 | `champagne` | `#CFB53B` / `#FFFCE6` | `#E5CD5F` / `#F5E08A` | Warm metallic gold |
 | `graphite` | `#4D4D4D` / `#F8F8F8` | `#D9D9D9` / `#A6A6A6` | Neutral monochrome |
 
-## Text schemes
+## Text Schemes
 
 | Name | Fonts |
 | :--- | :--- |
@@ -31,7 +31,7 @@ take a **theme name**; resolution order is **theme preset → color scheme**.
 | `kai` | KaiTi / 楷体 |
 | `source-han-serif` | Source Han Serif / 思源宋体 |
 
-## Layout schemes
+## Layout Schemes
 
 | Name | Character |
 | :--- | :--- |
@@ -40,7 +40,7 @@ take a **theme name**; resolution order is **theme preset → color scheme**.
 | `golden` | Golden-ratio proportions |
 | `minimal` | Reduced chrome, lots of whitespace |
 
-## Composition (free mix)
+## Composition (Free Mix)
 
 CLI flags or frontmatter slots override the matching theme slot individually
 (precedence: composition flag > frontmatter scheme > theme preset > default
@@ -48,9 +48,9 @@ CLI flags or frontmatter slots override the matching theme slot individually
 `blue`.
 
 ```bash
-mfly deck.md -t blue --text kai            # blue palette/layout, kai text
+mfly deck.md -t blue --text kai             # blue palette/layout, kai text
 mfly deck.md --color forest --text academic --layout golden   # full custom mix
-mfly deck.md --layout minimal              # layout only, rest of blue
+mfly deck.md --layout minimal               # layout only, rest of blue
 ```
 
 Frontmatter equivalents: `color_scheme:` / `text_scheme:` / `layout_scheme:`.
@@ -60,7 +60,7 @@ frontmatter nothing fails — unknown `theme:` warns and falls back to `blue`;
 unknown scheme values warn and fall back to that slot's default (color keeps
 the theme's color, text falls back to `system`, layout to the built-in pack).
 
-## Extending programmatically
+## Extending Programmatically
 
 Library consumers can register new entries via
 `registerThemePreset` / `registerColorScheme` / `registerTextScheme` /
