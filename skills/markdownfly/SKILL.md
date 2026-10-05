@@ -5,12 +5,20 @@ description: Generate PowerPoint (.pptx) presentations from Markdown with the ma
 
 # MarkdownFly (mfly) — Markdown to PowerPoint
 
+<!-- Version pin: this skill documents mfly 0.2.x exactly. When the CLI
+     contract changes (themes, flags, JSON schema, syntax), bump every
+     `markdownfly@0.2` occurrence here and re-verify references/. -->
+
 One Markdown file in, one fully editable `.pptx` out. No JVM, no headless
 browser. Requires Node.js 20+. Run it via npx — no install step:
 
 ```bash
-npx -y markdownfly@latest deck.md
+npx -y markdownfly@0.2 deck.md
 ```
+
+The version is pinned to `0.2` on purpose: this skill's documented contract
+matches 0.2.x behavior. Patch fixes still flow in; breaking minors are
+blocked until the skill itself is updated.
 
 ## Workflow
 
@@ -75,18 +83,18 @@ grammar lives there.
 ### 3. Convert
 
 ```bash
-npx -y markdownfly@latest deck.md --json
+npx -y markdownfly@0.2 deck.md --json
 ```
 
 - Exit code `0` = every file converted. Exit `1` = at least one failure or a
   usage error (unknown theme, no matching files, `-o` with multiple files).
-- `--json` prints ONE JSON object on stdout; diagnostics go to stderr:
+- Use the pinned version everywhere (including ad-hoc checks): the pin keeps
+  the CLI behavior aligned with this skill. `--json` prints ONE JSON object
+  on stdout; diagnostics go to stderr:
 
 ```json
 {"ok":true,"durationMs":2102,"files":[{"input":"deck.md","output":"C:/abs/path/deck.pptx","ok":true}]}
 ```
-
-- Pin the version if reproducibility matters: `npx -y markdownfly@0.2 ...`.
 
 ### 4. Verify and report
 
@@ -148,5 +156,6 @@ layout: code           # default layout for content slides (rarely needed)
   broken — prefer `png`/`jpg`.
 - Setext-style headings don't exist here: a standalone `===` line is a row
   break, so write `# Heading`, not `Heading` + `===`.
-- If behavior looks wrong, run `npx -y markdownfly@latest --version` first —
-  an older cached npx copy may lack the flags documented here.
+- If behavior looks wrong, run `npx -y markdownfly@0.2 --version` first — a
+  stray global install or cached older copy may lack the flags documented
+  here. The version should start with `0.2`.
