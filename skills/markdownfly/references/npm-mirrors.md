@@ -5,17 +5,22 @@ Read this when an npm/npx step of this skill fails with a network error —
 from `registry.npmjs.org` — typically at the step-0 preflight or the convert
 step.
 
-## The rule: temporary mirrors only
+## Rule: Temporary Mirrors Only
 
 Retry the failing command with a **per-invocation** `--registry` flag:
 
 ```bash
 # version check via mirror
-npx -y --registry=https://registry.npmmirror.com markdownfly@0.2 --version
+npx -y --registry=https://registry.npmmirror.com markdownfly@xx --version
 
 # convert via mirror (same flag, nothing else changes)
-npx -y --registry=https://registry.npmmirror.com markdownfly@0.2 deck.md --json
+npx -y --registry=https://registry.npmmirror.com markdownfly@xx deck.md --json
 ```
+
+> **`xx` = the version pinned in SKILL.md** (see the step-0 preflight and the
+> version-pin note at the top, e.g. `markdownfly@0.2`). Substitute that exact
+> version when running the commands — the version here must always match what
+> the skill requires. This file only needs editing when the skill's pin moves.
 
 - **Never run `npm config set registry ...`** — it rewrites the user's global
   config and silently affects every other project on the machine. Per-command
@@ -24,7 +29,7 @@ npx -y --registry=https://registry.npmmirror.com markdownfly@0.2 deck.md --json
 - Read-only diagnosis is always fine: `npm config get registry` shows the
   current registry without changing anything.
 
-## Test a registry before using it
+## Test a Registry Before Using It
 
 Two read-only commands — neither touches the user's config:
 
@@ -33,29 +38,29 @@ Two read-only commands — neither touches the user's config:
 npm ping --registry=https://registry.npmmirror.com
 
 # 2) Does it actually serve the pinned package? (catches mirror sync lag)
-npm view markdownfly@0.2 version --registry=https://registry.npmmirror.com
+npm view markdownfly@xx version --registry=https://registry.npmmirror.com
 ```
 
-- Run `npm ping` across the mirror table below and pick the first that
-  answers PONG; stick with it for the session.
-- `npm view` matters because a mirror can be reachable but **not yet
-  synced**: if it 404s on `markdownfly@0.2` while `npm ping` succeeds, fall
-  back to the official registry for this session (or try the next mirror).
+- Run `npm ping` across the mirror table below and pick the first that answers
+  PONG; stick with it for the session.
+- `npm view` matters because a mirror can be reachable but **not yet synced**:
+  if it 404s on `markdownfly@xx` while `npm ping` succeeds, fall back to the
+  official registry for this session (or try the next mirror).
 
 ## Mirrors
 
-| 镜像源名称 | 地址 | 备注 |
+| Mirror | URL | Notes |
 | :--- | :--- | :--- |
-| 淘宝 NPM 镜像 | `https://registry.npmmirror.com` | 最常用，同步频率高，推荐首选 |
-| 阿里云 NPM 镜像 | `https://npm.aliyun.com` | 阿里云官方镜像 |
-| 腾讯云 NPM 镜像 | `https://mirrors.cloud.tencent.com/npm/` | 腾讯云官方镜像 |
-| 华为云 NPM 镜像 | `https://mirrors.huaweicloud.com/repository/npm/` | 华为云官方镜像 |
-| 官方源 | `https://registry.npmjs.org` | 默认源，用于恢复或发布包 |
+| Taobao NPM Mirror | `https://registry.npmmirror.com` | Most widely used, high sync frequency — recommended first choice |
+| Alibaba Cloud NPM Mirror | `https://npm.aliyun.com` | Official Alibaba Cloud mirror |
+| Tencent Cloud NPM Mirror | `https://mirrors.cloud.tencent.com/npm/` | Official Tencent Cloud mirror |
+| Huawei Cloud NPM Mirror | `https://mirrors.huaweicloud.com/repository/npm/` | Official Huawei Cloud mirror |
+| Official registry | `https://registry.npmjs.org` | Default source, for recovery and publishing |
 
 - Try in table order until one works; stick with whichever mirror succeeded
   for the rest of the session.
-- Mirrors sync from upstream on a delay: a **brand-new** release can 404 on
-  a mirror before it appears there. If the pinned version 404s, retry the
+- Mirrors sync from upstream on a delay: a **brand-new** release can 404 on a
+  mirror before it appears there. If the pinned version 404s, retry the
   official registry once before concluding the version doesn't exist.
 - Publishing (`npm publish`) and npm authentication always go to the official
   registry, never a mirror.

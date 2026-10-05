@@ -4,13 +4,13 @@ Complete grammar for deck files. Read this before writing non-trivial layouts,
 image sizing, per-slide directives, or non-mermaid diagrams. Everything below
 is verified against markdownfly v0.2.
 
-## Slide splitting
+## Slide Splitting
 
 - `---` (horizontal rule): primary slide separator.
-- `# Heading 1`: new slide with the **cover/title** layout (first one is the deck cover).
+- `# Heading 1`: new slide with the **cover/title** layout (the first one becomes the deck cover).
 - `## Heading 2`: new slide with **content** or **section** layout (a bare `##` with no body becomes a section divider).
 
-## Frontmatter fields
+## Frontmatter Fields
 
 ```yaml
 ---
@@ -25,15 +25,15 @@ layout: code             # default layout for content slides
 ---
 ```
 
-All fields optional. CLI flags override frontmatter. Unknown names in
+All fields are optional. CLI flags override frontmatter. Unknown names in
 frontmatter never fail the deck: unknown `theme:` warns and falls back to
 `blue`; unknown `color_scheme` keeps the theme's color; unknown `text_scheme`
 falls back to `system`; unknown `layout_scheme` falls back to the built-in
 layout pack.
 
-## In-slide grid layout
+## In-Slide Grid Layout
 
-Standalone marker lines split a slide into columns and rows — no other markup:
+Standalone marker lines split a slide into columns and rows — no other markup needed:
 
 ````markdown
 ## Architecture Overview
@@ -61,7 +61,7 @@ graph LR
 - `===` (standalone line): split into **rows** (stacked).
 - Combine both for grids. Markers inside code blocks are never interpreted.
 
-## Per-slide directives `@(...)`
+## Per-Slide Directives `@(...)`
 
 A standalone `@(key=value, ...)` line at the bottom of a slide sets options:
 
@@ -94,7 +94,7 @@ Variants: `NOTE` / `INFO` / `TIP` / `SUCCESS` / `WARNING` / `CAUTION` /
 `DANGER` — rendered as theme-styled accent cards. A title written after the
 marker replaces the variant name on the card.
 
-## Task lists
+## Task Lists
 
 ```markdown
 - [x] Completed item
@@ -112,22 +112,16 @@ centered in its column):
 ![logo](./logo.svg){width=120px,height=40mm,align=right}
 ```
 
-- Sizing keys: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`).
-- Units: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`; `%` is relative to the column (single value keeps aspect ratio).
+- **Sizing keys**: `w`/`width`, `h`/`height`, `align` (`left`/`center`/`right`, default `center`).
+- **Units**: `px` (default), `pt`, `cm`, `mm`, `in`/`inch`; `%` is relative to the column (single value keeps aspect ratio).
 - Invalid sizing params are ignored; the image still renders.
-- Supported formats: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`.
-  Alt text is carried into the pptx.
-- `webp`: embeds as-is but PowerPoint for the web and Office ≤2019 show it
-  broken (warning printed). `svg`: rasterized to a 1200px-wide PNG on embed.
-- Sources: local paths (resolved against the markdown file's directory, or
-  against `resource_dir` — both independent of the shell cwd), remote
-  `http(s)://` URLs (10 s timeout), and base64 `data:` URIs.
-- Failure mode: missing or unfetchable images are skipped with a stderr
-  warning; the deck is still produced.
-- Security: paths are resolved without restrictions — only convert markdown
-  you trust.
+- **Supported formats**: `png`, `jpg`/`jpeg`, `gif`, `webp`, `bmp`, `svg`. Alt text is carried into the pptx.
+- `webp`: embeds as-is but PowerPoint for the web and Office ≤2019 show it broken (warning printed). `svg`: rasterized to a 1200px-wide PNG on embed.
+- **Sources**: local paths (resolved against the markdown file's directory, or against `resource_dir` — both independent of the shell cwd), remote `http(s)://` URLs (10 s timeout), and base64 `data:` URIs.
+- **Failure mode**: missing or unfetchable images are skipped with a stderr warning; the deck is still produced.
+- **Security**: paths are resolved without restrictions — only convert markdown you trust.
 
-## Code blocks
+## Code Blocks
 
 Tag the fence with a language for Shiki token highlighting (javascript,
 typescript, python, java, c, cpp, csharp, go, rust, ruby, php, swift, kotlin,
@@ -135,7 +129,7 @@ bash, sql, html, css, json, yaml, markdown, xml, docker, and more; unknown
 languages fall back to plain text). Use `@(highlight=1,3-4)` below the fence
 to draw highlight bands on those lines.
 
-## Diagram code blocks
+## Diagram Code Blocks
 
 ````markdown
 ```mermaid
@@ -180,12 +174,12 @@ PlantUML specifics:
 - Diagram errors never fail the deck: the slide shows a red placeholder and
   the rest renders.
 
-## Draft comments
+## Draft Comments
 
 A standalone line starting with `%%` is removed before rendering. Lines
 inside code fences are untouched.
 
-## Cover metadata lines
+## Cover Metadata Lines
 
 On the first cover slide, lines prefixed `作者：` / `日期：` (Chinese full- or
 half-width colon, multiple lines allowed) become cover metadata instead of
@@ -194,20 +188,20 @@ body paragraphs:
 ```markdown
 # Quarterly Review
 
-作者：张三
+作者：Zhang San
 日期：2026-10-05
 ```
 
-## Image-page auto layout
+## Image-Page Auto Layout
 
 A slide containing 1–3 images and no substantial body text is auto-detected
 as an image page (`image-single` / `image-double` / `image-triple`), or force
 it with `@(layout=image-single)`.
 
-## Quirks to remember
+## Quirks to Remember
 
-- No setext headings: a standalone `===` is a row break. Write `# Heading`.
-- A standalone `<->` is a column break; use `***bold italic***` for emphasis.
-- mfly has no HTML pass-through: raw HTML in markdown is dropped.
-- Tables are GFM tables; `@(chart=…)` turns the first one on the slide into a
+- **No setext headings**: a standalone `===` is a row break. Write `# Heading`.
+- **`<->`** is a column break; use `***bold italic***` for emphasis.
+- **No HTML pass-through**: raw HTML in markdown is dropped.
+- **Tables**: GFM tables; `@(chart=…)` turns the first one on the slide into a
   chart (table needs ≥2 columns and ≥1 data row).

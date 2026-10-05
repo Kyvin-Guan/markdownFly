@@ -1,6 +1,6 @@
 ---
 name: markdownfly
-description: Generate PowerPoint (.pptx) presentations from Markdown with the markdownfly (mfly) CLI — editable 16:9 slides, themes, syntax-highlighted code, and Mermaid/Graphviz/PlantUML/ECharts diagrams. Two ways in: the user names a topic and wants slides drafted from scratch, or the user already has content (an outline, class notes, book text, an essay) to turn into slides. Either way, draft a clean preview markdown, show it, and wait for the user's confirmation or change requests before generating the .pptx. Trigger on "make a PPT", tech talk, report deck, 做个PPT, 幻灯片, 演示文稿, "turn these notes into slides" — even if pptx is not spelled out. Not for programmatically editing an existing .pptx file (use a pptx-editing skill for that).
+description: Convert Markdown to a polished PowerPoint (.pptx) file using the markdownfly (mfly) CLI. Handles two entry modes: draft slides from a topic the user names, or restructure content the user supplies (outline, notes, essay). Always preview the Markdown deck first and wait for approval before converting. Activate on: "make a presentation", "create slides", "turn this into a deck", "make a PPT", 做PPT, 幻灯片, 演示文稿, 做报告, or any request to produce editable slide files from text. Not for editing an existing .pptx.
 ---
 
 # MarkdownFly (mfly) — Markdown to PowerPoint
@@ -37,29 +37,28 @@ node --version                    # must print v20 or higher
 npx -y markdownfly@0.2 --version  # must print 0.2.x
 ```
 
-- Node < 20 → stop, tell the user to install or upgrade Node.js 20+
+- **Node < 20** → stop, tell the user to install or upgrade Node.js 20+
   (https://nodejs.org), and do not continue the workflow.
-- The npx check fails with a network error (timeout, `ECONNRESET`, "fetch
-  failed") → read [references/npm-mirrors.md](references/npm-mirrors.md) and
-  retry with a **temporary** mirror via a per-command `--registry` flag.
-  Never rewrite the user's npm config. If every mirror fails, report to the
-  user.
-- The version does not start with `0.2` → a stray global `mfly` install or
+- **Network error** (`ETIMEDOUT`, `ECONNRESET`, "fetch failed") → read
+  [references/npm-mirrors.md](references/npm-mirrors.md) and retry with a
+  **temporary** mirror via a per-command `--registry` flag. Never rewrite the
+  user's npm config. If every mirror fails, report to the user.
+- **Version does not start with `0.2`** → a stray global `mfly` install or
   stale cache is interfering; show the user the actual version output before
   proceeding.
 
-### 1. Identify the entry mode, then set style
+### 1. Identify entry mode, then set style
 
 - **Mode 1 — topic given**: the user supplies a subject ("a 5-page talk on
-  REST APIs") and expects you to draft the content. Plan the slide flow
-  first (cover → sections → summary), one idea per slide.
-- **Mode 2 — content given**: the user supplies an outline, class notes,
-  book text, or an essay. Restructure it into slide-sized ideas rather than
-  pasting blocks verbatim; note anything you dropped or merged.
+  REST APIs") and expects you to draft the content. Plan the slide flow first
+  (cover → sections → summary), one idea per slide.
+- **Mode 2 — content given**: the user supplies an outline, class notes, book
+  text, or an essay. Restructure it into slide-sized ideas rather than pasting
+  blocks verbatim; note anything you dropped or merged.
 
 Either way, establish (ask only what the user didn't say, in one batch, each
 with your proposal so the user can just accept): audience, language, rough
-slide count, and style. Three style calls belong to the user:
+slide count, and style. Three style decisions belong to the user:
 
 - **Theme**: propose one and let the user confirm. Map style to a theme:
   technical → `blue` (default) or `ocean-dark`; warm/humanities → `gold`;
@@ -160,7 +159,7 @@ npx -y markdownfly@0.2 deck.md --json
 ### 4. Verify and report
 
 1. Check the exit code and the `ok` field; read `files[].output` for the
-   absolute product path.
+   absolute output path.
 2. **Read stderr too**: missing images, failed remote fetches, and diagram
    errors print warnings there but the deck is still generated — relay them to
    the user instead of silently passing.
@@ -169,16 +168,16 @@ npx -y markdownfly@0.2 deck.md --json
 4. Report the absolute output path and any warnings. Never claim diagrams or
    images rendered if stderr said otherwise.
 
-## CLI contract
+## CLI Contract
 
 | Flag | Effect |
 | :--- | :--- |
 | `mfly <files...>` | Convert one or more files (globs allowed) |
 | `-o <path>` | Output path (single input only; overwrites) |
 | `-t <name>` | Theme: `blue` (default), `emerald`, `gold`, `slate`, `ocean`, `ocean-dark`, `forest`, `champagne`, `graphite` |
-| `--color <name>` | Override color scheme: `ocean, ocean-dark, forest, champagne, graphite` |
-| `--text <name>` | Override text scheme: `system, academic, kai, source-han-serif` |
-| `--layout <name>` | Override layout scheme: `folio, legacy, golden, minimal` |
+| `--color <name>` | Override color scheme: `ocean`, `ocean-dark`, `forest`, `champagne`, `graphite` |
+| `--text <name>` | Override text scheme: `system`, `academic`, `kai`, `source-han-serif` |
+| `--layout <name>` | Override layout scheme: `folio`, `legacy`, `golden`, `minimal` |
 | `--quiet` | Suppress per-file progress lines |
 | `--json` | Machine-readable result on stdout |
 
@@ -188,39 +187,41 @@ npx -y markdownfly@0.2 deck.md --json
   and list valid names. Unknown theme in frontmatter only warns and falls
   back to `blue`.
 
-## Frontmatter template
+## Frontmatter Template
 
 ```yaml
 ---
-theme: blue            # preset or color-only name (see themes reference)
+theme: blue              # preset or color-only name (see themes reference)
 color_scheme: champagne  # optional slot overrides
 text_scheme: kai
 layout_scheme: folio
 author: "Your Name"
 footer: "Confidential - {page} / {total}"  # {page}/{total}/{section}/{title}
-resource_dir: ./assets # base dir for relative image paths
-layout: code           # default layout for content slides (rarely needed)
+resource_dir: ./assets   # base dir for relative image paths
+layout: code             # default layout for content slides (rarely needed)
 ---
 ```
 
 ## Pitfalls
 
-- **The preview gate is the contract**: mode 1 and mode 2 both end step 2
-  with a wait. Only skip it when the user explicitly opts out ("直接生成" /
-  "just generate it") — then go straight to step 3 with the theme you would
-  have proposed.
-- Image paths (and `resource_dir`) resolve against the **markdown file's
+- **The preview gate is the contract**: both modes end step 2 with a wait.
+  Only skip it when the user explicitly opts out ("just generate it") — then
+  go straight to step 3 with the theme you would have proposed.
+- **Image paths** (and `resource_dir`) resolve against the **markdown file's
   directory**, never the shell's cwd — run the CLI from anywhere.
-- A missing/broken image or failed remote fetch → stderr warning, deck still
+- **Missing/broken image or failed remote fetch** → stderr warning, deck still
   generated, slide just omits the image. Decide with the user whether to fix
   the source.
-- `%% comment` lines are stripped from the deck entirely; code fences are safe.
-- PlantUML: the `@startuml`/`@enduml` envelope is optional, `!theme` is not
-  available (use `skinparam`), and `MFLY_DEBUG=1` forwards engine logs to stderr.
-- `webp` images embed but PowerPoint for the web / Office ≤2019 show them
+- **`%% comment` lines** are stripped from the deck entirely; code fences are
+  safe.
+- **PlantUML**: the `@startuml`/`@enduml` envelope is optional, `!theme` is
+  not available (use `skinparam`), and `MFLY_DEBUG=1` forwards engine logs to
+  stderr.
+- **`webp` images** embed but PowerPoint for the web / Office ≤2019 show them
   broken — prefer `png`/`jpg`.
-- Setext-style headings don't exist here: a standalone `===` line is a row
-  break, so write `# Heading`, not `Heading` + `===`.
-- If behavior looks wrong, run `npx -y markdownfly@0.2 --version` first — a
-  stray global install or cached older copy may lack the flags documented
-  here. The version should start with `0.2`.
+- **Setext-style headings don't exist here**: a standalone `===` line is a
+  row break, so write `# Heading`, not `Heading` + `===`.
+- **Version mismatch**: if behavior looks wrong, run
+  `npx -y markdownfly@0.2 --version` first — a stray global install or cached
+  older copy may lack the flags documented here. The version should start with
+  `0.2`.
