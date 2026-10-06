@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseMarkdown } from '../src/parser/index.js';
 import { preprocessMarkdown } from '../src/parser/preprocess.js';
 import { parseDirectiveString, parseHighlightRanges } from '../src/parser/splitter.js';
+import { takeSyntaxWarnings } from '../src/utils/diagnostics.js';
 import type { SlideElement } from '../src/models/slide.js';
 
 describe('preprocessMarkdown', () => {
@@ -47,6 +48,109 @@ describe('preprocessMarkdown', () => {
     const md = 'Title\n====';
     const out = preprocessMarkdown(md);
     expect(out).toContain('<!-- mfly:row -->');
+  });
+});
+
+describe('preprocessMarkdown: fence tracking (CommonMark parity with remark)', () => {
+  it('a fence line with an info string never closes the outer fence', () => {
+    // The guide-file regression: ```mermaid inside ```markdown used to close
+    // the outer fence in the preprocessor while remark kept it open, so a
+    // later @(...) got rewritten into a code block and rendered as literal
+    // `<!-- mfly:dir:... -->` text.
+    const md = [
+      '```markdown',
+      '## 架构示例',
+      '```mermaid',
+      'graph LR',
+      '    Web --> API --> DB',
+      '```',
+      '<->',
+      '- bullet',
+      '```',
+      '@(notes=swallowed by remark if trackers diverge)',
+    ].join('\n');
+    takeSyntaxWarnings();
+    const out = preprocessMarkdown(md);
+    // The preprocessor agrees with remark: the first bare ``` closes the
+    // outer fence, so `<->` after it is rewritten; the final ``` reopens a
+    // fence per CommonMark, so the trailing @(notes=...) stays untouched.
+    const firstClose = out.indexOf('```\n<!-- mfly:col -->');
+    expect(firstClose).toBeGreaterThan(-1);
+    expect(out).toContain('@(notes=swallowed by remark if trackers diverge)');
+    // The swallowed directive is reported so the author can fix the source.
+    const warnings = takeSyntaxWarnings();
+    expect(warnings.some((w) => w.message.includes('mfly syntax'))).toBe(true);
+  });
+
+  it('a longer closing fence closes a shorter opening fence', () => {
+    const md = ['```', 'code', '````', '@(notes=after)'].join('\n');
+    takeSyntaxWarnings();
+    const out = preprocessMarkdown(md);
+    expect(out).toContain('<!-- mfly:dir:');
+    expect(takeSyntaxWarnings()).toHaveLength(0);
+  });
+
+  it('a different fence character does not close (~~~ inside ```)', () => {
+    const md = ['```', 'code', '~~~', '@(notes=still inside)', '```', '@(notes=outside)'].join('\n');
+    takeSyntaxWarnings();
+    const out = preprocessMarkdown(md);
+    expect(out).toContain('@(notes=still inside)');
+    expect(out).toContain('<!-- mfly:dir'); // only the one after the real close
+  });
+
+  it('warns once per "---" swallowed by a fence, but not inside diagram fences', () => {
+    const plain = ['## A', '', '```', 'text', '---', 'more', '```'].join('\n');
+    takeSyntaxWarnings();
+    preprocessMarkdown(plain, 'plain.md');
+    const plainWarnings = takeSyntaxWarnings();
+    expect(plainWarnings.filter((w) => w.message.includes('slide separator'))).toHaveLength(1);
+    expect(plainWarnings[0].file).toBe('plain.md');
+
+    const mermaid = ['## B', '', '```mermaid', 'graph TD', '---', '```'].join('\n');
+    takeSyntaxWarnings();
+    preprocessMarkdown(mermaid, 'mermaid.md');
+    expect(takeSyntaxWarnings()).toHaveLength(0); // --- is a legal mermaid edge line
+  });
+
+  it('warns about a fence left open at end of file', () => {
+    takeSyntaxWarnings();
+    preprocessMarkdown(['## A', '', '```bash', 'echo hi'].join('\n'), 'open.md');
+    const warnings = takeSyntaxWarnings();
+    expect(warnings.some((w) => w.message.includes('unclosed code fence'))).toBe(true);
+  });
+
+  it('does not warn about mfly markers inside a ```markdown documentation fence', () => {
+    const md = ['## A', '', '```markdown', '<->', '@(notes=example)', '---', '````'].join('\n');
+    takeSyntaxWarnings();
+    preprocessMarkdown(md, 'doc.md');
+    expect(takeSyntaxWarnings()).toHaveLength(0);
+  });
+});
+
+describe('splitter: internal mfly markers never render as code', () => {
+  it('strips mfly comment lines that leaked into a code block', () => {
+    const md = [
+      '## T',
+      '',
+      '```',
+      '<!-- mfly:dir:%40(notes%3Dleaked) -->',
+      'real code line',
+      '```',
+    ].join('\n');
+    takeSyntaxWarnings();
+    const p = parseMarkdown(md);
+    const code = p.slides[0].elements.find((e) => e.type === 'code') as { content: string };
+    expect(code.content).not.toContain('mfly:dir');
+    expect(code.content).toContain('real code line');
+    expect(takeSyntaxWarnings().some((w) => w.message.includes('internal mfly markers'))).toBe(true);
+  });
+
+  it('keeps the original content when every line would be stripped', () => {
+    const md = ['## T', '', '```', '<!-- mfly:col -->', '```'].join('\n');
+    takeSyntaxWarnings();
+    const p = parseMarkdown(md);
+    const code = p.slides[0].elements.find((e) => e.type === 'code') as { content: string };
+    expect(code.content).toContain('mfly:col');
   });
 });
 

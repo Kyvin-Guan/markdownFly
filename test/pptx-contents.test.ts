@@ -377,3 +377,30 @@ describe('element heights fit their content', () => {
     expect(picture[0].y - textY).toBeGreaterThanOrEqual(0.6);
   }, 120000);
 });
+
+/**
+ * Blank lines at the edges (or runs of them) of a code block used to make the
+ * highlighter emit newline runs that pptxgenjs turned into adjacent
+ * `<a:pPr>` elements — DrawingML-invalid XML that PowerPoint refuses to open
+ * (WPS tolerates it, which is why decks looked fine but would not open).
+ */
+describe('code blocks never produce schema-invalid pPr sequences', () => {
+  it('keeps blank/edge code lines out of adjacent-pPr patterns', async () => {
+    const code = [
+      '',
+      'start after a leading blank',
+      '',
+      '',
+      'two blanks above, one below',
+      '',
+    ].join('\n');
+    writeFileSync(join(tmpDir, 'blank-code.md'), `# Deck\n\n## 空行\n\n\`\`\`text\n${code}\n\`\`\`\n`);
+
+    const out = join(tmpDir, 'blank-code.pptx');
+    await convert(join(tmpDir, 'blank-code.md'), { output: out, theme: 'ocean-dark' });
+
+    const xml = await allSlideXml(out);
+    expect(xml).not.toMatch(/<\/a:pPr>\s*<a:pPr/);
+    expect(xml).not.toMatch(/<a:pPr[^>]*\/>\s*<a:pPr/);
+  }, 120000);
+});

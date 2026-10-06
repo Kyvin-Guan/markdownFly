@@ -2,7 +2,7 @@
 
 Complete grammar for deck files. Read this before writing non-trivial layouts,
 image sizing, per-slide directives, or non-mermaid diagrams. Everything below
-is verified against markdownfly v0.2.
+is verified against markdownfly v0.4.
 
 ## Slide Splitting
 
@@ -218,10 +218,70 @@ A slide containing 1–3 images and no substantial body text is auto-detected
 as an image page (`image-single` / `image-double` / `image-triple`), or force
 it with `@(layout=image-single)`.
 
-## Quirks to Remember
+## Ambiguous Syntax & Common Pitfalls
+
+These are standard-Markdown ambiguities (CommonMark-wide, not mfly-specific
+quirks) that most often produce wrong slides. mfly prints a
+`file:line — message` warning with a `↳ fix:` hint for each of them and still
+generates the deck — fix the listed lines and re-run.
+
+### Nested code fences need a longer outer fence
+
+To show markdown source that itself contains ` ``` ` fences (e.g. a fenced
+mermaid block), open the outer fence with **more backticks than any fence
+inside** — four is the convention:
+
+`````markdown
+````markdown
+## Architecture
+```mermaid
+graph LR
+    Web --> API
+```
+````
+`````
+
+A closing fence can never carry an info string: ```` ```mermaid ```` does not
+close an open ` ``` ` fence (it only opens one). If a fence is left open,
+everything after it renders as one giant code block and slide `---` separators
+inside it are swallowed — mfly warns with the line to fix.
+
+### `---` / `===` hugging text are setext headings, not breaks
+
+In `text` + `---` / `===` with no blank line between, CommonMark reads the
+`---` as a setext H2 underline and `===` as a setext H1 — the line above
+becomes a heading and **no slide split happens**. Always keep a blank line
+before a slide-separating `---`:
+
+```markdown
+First slide content.
+
+---
+
+## Next slide
+```
+
+### Grid markers and directives inside code fences are literal
+
+`<->`, `===`, and `@(...)` only act as layout markers as **standalone lines
+outside code fences**. Inside a fence they render as code — usually a sign
+that a fence above failed to close (mfly warns with the line number, except
+inside ` ```markdown ` fences, where such markers are read as documented
+examples).
+
+### Indentation creates code blocks
+
+Four or more leading spaces (outside list items) make CommonMark treat the
+block as literal code. Keep `@(...)` directives, `<->`, and `===` at column 0.
+
+### Raw HTML is dropped
+
+`<!-- comments -->` and other HTML never reaches the deck. Use `%%` draft
+lines for authoring notes.
+
+### Other quirks
 
 - **No setext headings**: a standalone `===` is a row break. Write `# Heading`.
 - **`<->`** is a column break; use `***bold italic***` for emphasis.
-- **No HTML pass-through**: raw HTML in markdown is dropped.
 - **Tables**: GFM tables; `@(chart=…)` turns the first one on the slide into a
   chart (table needs ≥2 columns and ≥1 data row).

@@ -5,20 +5,20 @@ description: Convert Markdown to a polished PowerPoint (.pptx) file using the ma
 
 # MarkdownFly (mfly) — Markdown to PowerPoint
 
-<!-- Version pin: this skill documents mfly 0.3.x exactly. When the CLI
+<!-- Version pin: this skill documents mfly 0.4.x exactly. When the CLI
      contract changes (themes, flags, JSON schema, syntax), bump every
-     `markdownfly@0.3` occurrence here and re-verify references/. -->
+     `markdownfly@0.4` occurrence here and re-verify references/. -->
 
 One Markdown file in, one fully editable `.pptx` out. No JVM, no headless
 browser. Requires Node.js 20+ — enforced by the step-0 preflight, not just
 promised here. Run it via npx — no install step:
 
 ```bash
-npx -y markdownfly@0.3 deck.md
+npx -y markdownfly@0.4 deck.md
 ```
 
-The version is pinned to `0.3` on purpose: this skill's documented contract
-matches 0.3.x behavior. Patch fixes still flow in; breaking minors are
+The version is pinned to `0.4` on purpose: this skill's documented contract
+matches 0.4.x behavior. Patch fixes still flow in; breaking minors are
 blocked until the skill itself is updated.
 
 ## Workflow
@@ -34,7 +34,7 @@ step won't stall on a download):
 
 ```bash
 node --version                    # must print v20 or higher
-npx -y markdownfly@0.3 --version  # must print 0.3.x
+npx -y markdownfly@0.4 --version  # must print 0.4.x
 ```
 
 - **Node < 20** → stop, tell the user to install or upgrade Node.js 20+
@@ -43,7 +43,7 @@ npx -y markdownfly@0.3 --version  # must print 0.3.x
   [references/npm-mirrors.md](references/npm-mirrors.md) and retry with a
   **temporary** mirror via a per-command `--registry` flag. Never rewrite the
   user's npm config. If every mirror fails, report to the user.
-- **Version does not start with `0.3`** → a stray global `mfly` install or
+- **Version does not start with `0.4`** → a stray global `mfly` install or
   stale cache is interfering; show the user the actual version output before
   proceeding.
 
@@ -144,7 +144,7 @@ graph LR
 2. Convert:
 
 ```bash
-npx -y markdownfly@0.3 deck.md --json
+npx -y markdownfly@0.4 deck.md --json
 ```
 
 - Exit code `0` = every file converted. Exit `1` = at least one failure or a
@@ -154,18 +154,24 @@ npx -y markdownfly@0.3 deck.md --json
   on stdout; diagnostics go to stderr:
 
 ```json
-{"ok":true,"durationMs":2102,"files":[{"input":"deck.md","output":"C:/abs/path/deck.pptx","ok":true}]}
+{"ok":true,"durationMs":2102,"warningCount":0,"files":[{"input":"deck.md","output":"C:/abs/path/deck.pptx","ok":true,"warnings":[]}]}
 ```
 
 ### 4. Verify and report
 
 1. Check the exit code and the `ok` field; read `files[].output` for the
    absolute output path.
-2. **Read stderr too**: missing images, failed remote fetches, video covers
-   falling back to a themed card (no frame extractor on the machine —
-   `{poster=img.png}` overrides), and diagram
-   errors print warnings there but the deck is still generated — relay them to
-   the user instead of silently passing.
+2. **Read stderr too** — warnings are actionable, not noise:
+   - **Syntax warnings** print as `file:line — message` plus a `↳ fix:` hint
+     (unclosed code fences, `---` swallowed by a fence, `@(...)`/`<->`/`===`
+     inside a fence). The deck is still generated, but the listed slides are
+     wrong: **fix the named lines in the markdown and re-run** before showing
+     the deck to the user. `--json` carries the same list in `files[].warnings`
+     plus a top-level `warningCount`.
+   - Missing images, failed remote fetches, video covers falling back to a
+     themed card (no frame extractor on the machine — `{poster=img.png}`
+     overrides), and diagram errors print warnings there but the deck is
+     still generated — relay them to the user instead of silently passing.
 3. Optional visual check if LibreOffice is available: render to PDF and
    inspect (`soffice --headless --convert-to pdf deck.pptx`). Skip if absent.
 4. Report the absolute output path and any warnings. Never claim diagrams or
@@ -224,7 +230,14 @@ layout: code             # default layout for content slides (rarely needed)
   broken — prefer `png`/`jpg`.
 - **Setext-style headings don't exist here**: a standalone `===` line is a
   row break, so write `# Heading`, not `Heading` + `===`.
+- **Fences that show markdown with fences inside** need a longer outer fence
+  (four backticks): a closing fence can never carry an info string, so
+  ` ```mermaid ` does not close an open ` ``` ` — an unclosed fence swallows
+  every following slide. Details in
+  [references/markdown-syntax.md](references/markdown-syntax.md).
+- **Keep a blank line before a slide-separating `---`**: `text` + `---` with
+  no blank line is a setext H2, not a slide break.
 - **Version mismatch**: if behavior looks wrong, run
-  `npx -y markdownfly@0.3 --version` first — a stray global install or cached
+  `npx -y markdownfly@0.4 --version` first — a stray global install or cached
   older copy may lack the flags documented here. The version should start with
-  `0.3`.
+  `0.4`.

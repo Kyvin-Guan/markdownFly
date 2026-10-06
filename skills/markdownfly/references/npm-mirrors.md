@@ -18,7 +18,7 @@ npx -y --registry=https://registry.npmmirror.com markdownfly@xx deck.md --json
 ```
 
 > **`xx` = the version pinned in SKILL.md** (see the step-0 preflight and the
-> version-pin note at the top, e.g. `markdownfly@0.2`). Substitute that exact
+> version-pin note at the top, e.g. `markdownfly@0.4`). Substitute that exact
 > version when running the commands — the version here must always match what
 > the skill requires. This file only needs editing when the skill's pin moves.
 

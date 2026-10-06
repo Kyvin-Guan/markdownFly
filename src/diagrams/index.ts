@@ -3,7 +3,7 @@
  * Unified entry point for all diagram renderers
  */
 
-import type { DiagramRenderer } from './renderer.js';
+import type { DiagramBox, DiagramRenderer } from './renderer.js';
 import type { Theme } from '../models/theme.js';
 import { MermaidDiagramRenderer } from './mermaid-renderer.js';
 import { GraphvizDiagramRenderer } from './graphviz-renderer.js';
@@ -47,12 +47,15 @@ export function getDiagramRenderer(language: string): DiagramRenderer | undefine
 
 /**
  * Render a diagram code block to PNG
+ * @param box placement box in inches, when known — lets text-scaling renderers
+ *        (mermaid) keep their text at the slide's reading size
  * @returns PNG image as Buffer
  */
 export async function renderDiagram(
   language: string,
   code: string,
   theme?: Theme,
+  box?: DiagramBox,
 ): Promise<Buffer> {
   const renderer = getOrCreate(language);
   if (!renderer) {
@@ -60,5 +63,5 @@ export async function renderDiagram(
   }
 
   await renderer.initialize();
-  return renderer.render(code, theme);
+  return renderer.render(code, theme, box);
 }

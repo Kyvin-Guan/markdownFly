@@ -1,6 +1,6 @@
 # MarkdownFly Themes Reference
 
-Theme selection grammar for markdownfly v0.2. `-t` / frontmatter `theme:`
+Theme selection grammar for markdownfly v0.4. `-t` / frontmatter `theme:`
 take a **theme name**; resolution order is **theme preset → color scheme**.
 
 ## Theme Presets (color × text × layout in one name)

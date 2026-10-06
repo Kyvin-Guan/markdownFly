@@ -12,11 +12,14 @@ import type { Presentation } from '../models/slide.js';
 import { extractFrontmatter } from './frontmatter.js';
 import { splitIntoSlides } from './splitter.js';
 import { preprocessMarkdown } from './preprocess.js';
+import { beginSource } from '../utils/diagnostics.js';
 
 /**
- * Parse a markdown string into a Presentation
+ * Parse a markdown string into a Presentation.
+ * `sourceName` is only used for warning messages.
  */
-export function parseMarkdown(markdown: string): Presentation {
+export function parseMarkdown(markdown: string, sourceName = 'input'): Presentation {
+  beginSource(sourceName);
   const processor = unified()
     .use(remarkParse)
     .use(remarkFrontmatter, ['yaml'])
@@ -24,7 +27,7 @@ export function parseMarkdown(markdown: string): Presentation {
 
   // Rewrite layout markers (<-> / === / @(...)) before parsing so they
   // never collide with setext headings or paragraph text.
-  const tree = processor.parse(preprocessMarkdown(markdown)) as Root;
+  const tree = processor.parse(preprocessMarkdown(markdown, sourceName)) as Root;
 
   const config = extractFrontmatter(tree);
   const slides = splitIntoSlides(tree, config.layout);

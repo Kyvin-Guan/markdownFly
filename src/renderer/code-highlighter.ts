@@ -16,6 +16,8 @@ interface PptxTextRun {
     bold?: boolean;
     italic?: boolean;
     highlight?: string;
+    /** Ends the line — pptxgenjs starts a new paragraph after this run. */
+    breakLine?: boolean;
   };
 }
 
@@ -70,6 +72,25 @@ export function highlightBackgroundFor(theme: Theme): string {
 }
 
 /**
+ * Plain-text runs: one run carrying the whole source. pptxgenjs splits a
+ * string run on its newlines natively and groups the pieces into real
+ * paragraphs, which is the one encoding that stays schema-valid for blank
+ * lines too.
+ */
+function plainTextRuns(code: string, theme: Theme): PptxTextRun[] {
+  return [
+    {
+      text: code,
+      options: {
+        color: theme.colors.codeText,
+        fontFace: theme.fonts.code,
+        fontSize: theme.fontSize.code,
+      },
+    },
+  ];
+}
+
+/**
  * Highlight code and return pptxgenjs text runs
  * @param highlightLines 1-based line numbers drawn with a highlight background
  */
@@ -92,16 +113,7 @@ export async function highlightCode(
         await highlighter.loadLanguage(language as never);
       } catch {
         // Language not supported — fall back to plain text
-        return [
-          {
-            text: code,
-            options: {
-              color: theme.colors.codeText,
-              fontFace: theme.fonts.code,
-              fontSize: theme.fontSize.code,
-            },
-          },
-        ];
+        return plainTextRuns(code, theme);
       }
     }
 
@@ -128,6 +140,18 @@ export async function highlightCode(
       const lineNumber = i + 1;
       const line = result.tokens[i];
       const isHighlighted = highlightLines.includes(lineNumber);
+      if (line.length === 0) {
+        // A blank source line yields no tokens; an empty run of its own keeps
+        // the line (pptxgenjs groups `breakLine` runs into real paragraphs).
+        runs.push({
+          text: '',
+          options: {
+            color: theme.colors.codeText,
+            fontFace: theme.fonts.code,
+            fontSize: theme.fontSize.code,
+          },
+        });
+      }
       for (const token of line) {
         const options: PptxTextRun['options'] = {
           color: cleanColor(token.color),
@@ -139,27 +163,18 @@ export async function highlightCode(
         }
         runs.push({ text: token.content, options });
       }
-      // Add line break between lines (except last)
-      if (i < result.tokens.length - 1) {
-        runs.push({
-          text: '\n',
-          options: {
-            fontFace: theme.fonts.code,
-            fontSize: theme.fontSize.code,
-          },
-        });
+      // Break the paragraph after each line but the last. Never join lines
+      // with '\n'-only runs: pptxgenjs keeps those as literal newline
+      // characters inside <a:t> and emits paragraph properties mid-paragraph —
+      // adjacent ones around blank lines — which is schema-invalid XML that
+      // PowerPoint refuses to open (WPS tolerates it).
+      if (i < result.tokens.length - 1 && runs.length > 0) {
+        runs[runs.length - 1].options.breakLine = true;
       }
     }
   } catch {
     // Fallback: plain text
-    runs.push({
-      text: code,
-      options: {
-        color: theme.colors.codeText,
-        fontFace: theme.fonts.code,
-        fontSize: theme.fontSize.code,
-      },
-    });
+    return plainTextRuns(code, theme);
   }
 
   return runs;

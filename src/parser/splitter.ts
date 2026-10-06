@@ -23,11 +23,51 @@ import type {
   ImageAlign,
 } from '../models/slide.js';
 import { normalizeDiagramLanguage } from '../diagrams/languages.js';
+import { reportSyntaxWarning } from '../utils/diagnostics.js';
 
 /** Callout variants recognized in blockquotes: > [!NOTE] / [!TIP] / ... */
 const CALLOUT_VARIANTS = new Set([
   'note', 'info', 'tip', 'success', 'warning', 'caution', 'danger',
 ]);
+
+/** One full line carrying an internal `<!-- mfly:... -->` marker. */
+const MFLY_COMMENT_LINE_RE = /^\s*<!--\s*mfly:(?:row|col|dir)\b.*-->\s*$/;
+
+/**
+ * Internal `<!-- mfly:... -->` markers must never surface as literal code or
+ * diagram source. They only end up inside a code node when the source's
+ * fences are unbalanced in a way the preprocessor and remark disagree about;
+ * strip them so a parse divergence costs the author a warning, not leaked
+ * internals. If stripping would leave an empty block, keep the original — an
+ * honest (broken) render beats an invisible one.
+ */
+/**
+ * Leading/trailing blank lines in a code block are invisible padding at best;
+ * kept, they make the highlighter emit newline runs at the run-list edges,
+ * which pptxgenjs turns into schema-invalid `<a:pPr>` sequences that
+ * PowerPoint refuses to open (WPS silently tolerates them). Line numbers for
+ * `@(highlight=…)` stay consistent because directives are resolved against
+ * the same trimmed content.
+ */
+function trimEdgeNewlines(content: string): string {
+  return content.replace(/^\n+/, '').replace(/\n+$/, '');
+}
+
+function stripInternalMarkers(content: string): string {
+  const lines = content.split('\n');
+  const kept = lines.filter((line) => !MFLY_COMMENT_LINE_RE.test(line));
+  if (kept.length === lines.length) return content;
+  const sample = lines.find((line) => MFLY_COMMENT_LINE_RE.test(line)) ?? '';
+  reportSyntaxWarning({
+    message:
+      'code block contained internal mfly markers (e.g. ' +
+      `${sample.trim().slice(0, 60)}${sample.trim().length > 60 ? '…' : ''}) — they were removed`,
+    hint:
+      'this usually means an unclosed code fence earlier in the file let the converter ' +
+      'rewrite a directive inside it — check the fences above this block',
+  });
+  return kept.length > 0 ? kept.join('\n') : content;
+}
 
 /**
  * Video file extensions embedded as playable media. Local files only — a
@@ -286,12 +326,12 @@ function nodeToElement(node: Content): SlideElement | null {
         return {
           type: 'diagram',
           diagramType,
-          content: node.value,
+          content: stripInternalMarkers(node.value),
         } satisfies DiagramElement;
       }
       const element = {
         type: 'code',
-        content: node.value,
+        content: trimEdgeNewlines(stripInternalMarkers(node.value)),
         language: node.lang ?? undefined,
       } satisfies CodeElement;
       return element;

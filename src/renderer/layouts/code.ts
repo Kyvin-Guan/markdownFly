@@ -19,6 +19,7 @@ import {
   titleRuleHeight,
   titleRuleRole,
 } from './layout-spec.js';
+import { CODE_INSET_IN, fitCodeBlock } from './measure.js';
 
 export async function renderCodeSlide(
   slide: PptxGenJS.Slide,
@@ -77,20 +78,26 @@ export async function renderCodeSlide(
         element.highlightLines,
       );
 
+      // The panel keeps its full remaining height (a dedicated code page is a
+      // full-bleed code surface); the font shrinks until the wrapped content
+      // fits it instead of the text spilling off the slide bottom.
+      const boxH = 7.5 - yPos - 0.45;
+      const fit = fitCodeBlock(element.content, contentW, boxH - 0.3, theme.fontSize.code);
+
       slide.addText(runs, {
         x: left,
         y: yPos,
         w: contentW,
-        h: 7.5 - yPos - 0.45,
+        h: boxH,
         fill: { color: theme.colors.codeBackground },
         color: theme.colors.codeText,
         fontFace: theme.fonts.code,
-        fontSize: theme.fontSize.code,
+        fontSize: fit.fontSize,
         valign: 'top',
         paraSpaceAfter: 2,
         margin: [10, 15, 10, 15],
       });
-      yPos += 5.0;
+      yPos += boxH + 0.2;
     }
   }
 }
@@ -155,6 +162,10 @@ async function renderMinimalCode(
       element.language ?? 'text',
       element.highlightLines,
     );
+    // Inner text box leaves the card padding plus the 16pt text margin;
+    // shrink the font until the wrapped content fits that area.
+    const innerH = boxH - pad * 2 - CODE_INSET_IN;
+    const fit = fitCodeBlock(element.content, boxW - pad * 2, innerH, theme.fontSize.code);
     slide.addText(runs, {
       x: boxX + pad,
       y: boxY + pad,
@@ -163,7 +174,7 @@ async function renderMinimalCode(
       fill: { color: theme.colors.codeBackground },
       color: theme.colors.codeText,
       fontFace: theme.fonts.code,
-      fontSize: theme.fontSize.code,
+      fontSize: fit.fontSize,
       valign: 'top',
       paraSpaceAfter: 2,
       margin: [8, 12, 8, 12],

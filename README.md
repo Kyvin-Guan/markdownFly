@@ -175,13 +175,18 @@ mfly docs/*.md --quiet
 ```
 
 - `--json` prints a single JSON object to stdout:
-  `{"ok":true,"durationMs":1234,"files":[{"input":"slides.md","output":"C:/abs/slides.pptx","ok":true}]}`.
-  Per-file failures set `ok:false` with an `error` field.
+  `{"ok":true,"durationMs":1234,"warningCount":0,"files":[{"input":"slides.md","output":"C:/abs/slides.pptx","ok":true,"warnings":[]}]}`.
+  Per-file failures set `ok:false` with an `error` field; source-syntax
+  problems surface in `warningCount` / `files[].warnings`.
 - Exit code is `0` only when **every** file converts successfully; if any file
   fails the process exits `1` (a summary line is printed to stderr).
 - `-t` with an unknown theme name fails with exit `1` (unknown theme names in
   markdown frontmatter fall back to the default theme `blue` with a warning).
 - Progress lines go to stderr; errors and warnings always go to stderr.
+  **Syntax warnings are actionable**: they print as `file:line — message`
+  with a `↳ fix:` hint and the deck is still generated — fix the named lines
+  and re-run (an agent driving the CLI can correct the markdown from the
+  warning text alone).
 
 ---
 
@@ -494,6 +499,11 @@ in explicitly, including via the `layout` directive:
 
 - A standalone `===` always means a row break — setext-style headlines (`Title` + `===`) are `# Headings` in mfly.
 - A standalone `<->` always means a column break; use `***text***` for bold italic (the moffee convention of `<->bold and italic<->` is deliberately not adopted to avoid ambiguity).
+- **Nested code fences need a longer outer fence**: to show markdown source that itself contains ` ``` ` fences, open the outer fence with four backticks (` ```` `). A closing fence can never carry an info string (` ```mermaid ` does not close an open ` ``` `), so an unclosed fence swallows every following slide — mfly warns with the exact line to fix.
+- **Keep a blank line before a slide-separating `---`**: `text` + `---` with no blank line between is a CommonMark setext H2, not a slide break.
+- **Grid markers & directives are literal inside code fences**: `<->`, `===`, `@(...)` only act as layout markers on standalone lines outside fences; inside one they render as code (usually an unclosed fence above — mfly warns).
+- **Indentation creates code blocks**: four or more leading spaces (outside list items) become a literal code block; keep `@(...)` directives at column 0.
+- **Raw HTML is dropped**: `<!-- comments -->` and other HTML never reaches the deck — use `%%` draft lines for authoring notes.
 
 ---
 

@@ -63,8 +63,8 @@ export async function renderPresentation(
         return cache.get(key);
       };
     })(),
-    renderDiagram: async (diagramType: string, code: string) => {
-      return renderDiagram(diagramType, code, theme);
+    renderDiagram: async (diagramType: string, code: string, box?: { width: number; height: number }) => {
+      return renderDiagram(diagramType, code, theme, box);
     },
     footerTemplate: presentation.config.footer,
     pageNumber: 0,

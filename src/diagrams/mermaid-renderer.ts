@@ -3,12 +3,23 @@
  * Uses mermaid + jsdom to render diagrams to SVG in Node.js
  */
 
-import type { DiagramRenderer } from './renderer.js';
+import type { DiagramBox, DiagramRenderer } from './renderer.js';
 import type { Theme } from '../models/theme.js';
 import { svgToPng } from './svg-to-png.js';
 import { isDarkTheme, diagramFontFamily } from './theme.js';
+import { fitInBox } from '../utils/image-fit.js';
 
 let initialized = false;
+
+/**
+ * The font size (px) mermaid is laying out with for the render in flight.
+ *
+ * jsdom has no text layout, so every text measurement below is a per-character
+ * heuristic. The constants are calibrated for mermaid's default 16px font; box
+ * sizing (see `onSlideTextPt`) renders at other sizes, and every heuristic must
+ * scale with it or node boxes stop fitting their labels.
+ */
+let layoutFontSizePx = 16;
 
 // ---------------------------------------------------------------------------
 // SVG geometry measurement
@@ -112,15 +123,21 @@ function expandedBox(m: Matrix, b: { x: number; y: number; width: number; height
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-/** Rough text width: CJK chars ≈ 1em, others ≈ 0.55em (mermaid default 16px) */
+/** Rough text width: CJK chars ≈ 1em, others ≈ 0.56em, at the active font size */
+function measureTextWidth(text: string, fontSizePx: number): number {
+  let width = 0;
+  for (const ch of text) {
+    width += (ch.codePointAt(0) ?? 0) > 0x2e80 ? fontSizePx : fontSizePx * 0.5625;
+  }
+  return width;
+}
+
 function textWidth(el: Element): number {
   let width = 0;
   const collect = (e: Element): void => {
     for (const child of Array.from(e.childNodes)) {
       if (child.nodeType === 3) {
-        for (const ch of child.textContent ?? '') {
-          width += (ch.codePointAt(0) ?? 0) > 0x2e80 ? 16 : 9;
-        }
+        width += measureTextWidth(child.textContent ?? '', layoutFontSizePx);
       } else if (child.nodeType === 1) {
         collect(child as Element);
       }
@@ -321,7 +338,7 @@ function elementLocalBox(el: Element): { x: number; y: number; width: number; he
       // Mermaid centers node labels (text-anchor: middle); degenerate (empty)
       // labels are dropped so they do not pollute the bounds
       if (w <= 4) return null;
-      return { x: num('x') - w / 2, y: num('y') - 14, width: w, height: 24 };
+      return { x: num('x') - w / 2, y: num('y') - layoutFontSizePx * 0.875, width: w, height: layoutFontSizePx * 1.5 };
     }
     default:
       return null;
@@ -547,8 +564,14 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
         if (box) return toRect(box);
       }
       const text = getDirectText(this);
-      const width = text ? Math.max(30, text.length * 9 + 20) : 80;
-      const height = text ? 28 : 40;
+      // Mermaid wraps labels into one <tspan> per line; a wrapped label needs
+      // a row of box height per line or its lower lines spill out of the shape.
+      const lines = Math.max(
+        1,
+        Array.from(this.children).filter((c) => (c.tagName ? c.tagName.toLowerCase() : '') === 'tspan').length,
+      );
+      const width = text ? Math.max(30, measureTextWidth(text, layoutFontSizePx) + 20) : 80;
+      const height = text ? (0.55 + 1.2 * lines) * layoutFontSizePx : 40;
       // A browser reports a centred <text> box as starting at x - width/2; the
       // same convention elementLocalBox already uses when measuring the frame.
       const isText = tag === 'text' || tag === 'tspan';
@@ -570,17 +593,18 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       }) as unknown as () => DOMRect;
     }
     const computeTextLength = function (this: Element) {
-      const text = getDirectText(this);
-      return text.length * 9;
+      return measureTextWidth(getDirectText(this), layoutFontSizePx);
     };
     (dom.window.Element.prototype as unknown as Record<string, unknown>).getComputedTextLength = computeTextLength;
     (dom.window.SVGElement.prototype as unknown as Record<string, unknown>).getComputedTextLength = computeTextLength;
     (dom.window.HTMLElement.prototype as unknown as Record<string, unknown>).getComputedTextLength = computeTextLength;
 
     if (dom.window.HTMLCanvasElement) {
-      dom.window.HTMLCanvasElement.prototype.getContext = (() => ({
-        measureText: (text: string) => ({ width: text.length * 8 }),
-        fillRect: () => {},
+      dom.window.HTMLCanvasElement.prototype.getContext = (() => {
+        const measureText = (text: string) => ({ width: measureTextWidth(text, layoutFontSizePx) });
+        return {
+          measureText,
+          fillRect: () => {},
         clearRect: () => {},
         getImageData: () => ({ data: new Array(4) }),
         putImageData: () => {},
@@ -600,7 +624,8 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
         rotate: () => {},
         arc: () => {},
         fill: () => {},
-      })) as unknown as typeof dom.window.HTMLCanvasElement.prototype.getContext;
+        };
+      }) as unknown as typeof dom.window.HTMLCanvasElement.prototype.getContext;
     }
 
     if (dom.window.SVGSVGElement) {
@@ -649,7 +674,7 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
     initialized = true;
   }
 
-  private buildConfig(theme?: Theme) {
+  private buildConfig(theme?: Theme, fontSizePx = 16) {
     return {
       startOnLoad: false,
       securityLevel: 'loose',
@@ -662,8 +687,16 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
       themeVariables: {
         fontFamily: diagramFontFamily(theme),
         background: 'transparent',
+        fontSize: `${fontSizePx}px`,
       },
-      flowchart: { htmlLabels: false, curve: 'basis', useMaxWidth: false },
+      // wrappingWidth is calibrated for the 16px default; scale it with the
+      // adapted font size or long CJK labels wrap with a single orphan char.
+      flowchart: {
+        htmlLabels: false,
+        curve: 'basis',
+        useMaxWidth: false,
+        wrappingWidth: Math.round((200 * fontSizePx) / 16),
+      },
       sequence: { useMaxWidth: false },
       // jsdom has no layout engine: offsetWidth is 0 rather than undefined, so
       // mermaid's own "no parent width" fallback never fires and the gantt chart
@@ -672,18 +705,53 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
     };
   }
 
-  async render(code: string, theme?: Theme): Promise<Buffer> {
+  /**
+   * Text size the rendered diagram lands at on the slide, in points.
+   *
+   * Mermaid lays out at its own internal font size; the SVG is then scaled
+   * into the placement box, so the effective text size is fontSize scaled by
+   * (placed width / viewBox width). Without this check a large diagram shrinks
+   * its labels to ~10pt next to 18pt slide text — the diagram reads undersized
+   * even though it technically fills its box.
+   */
+  private onSlideTextPt(svg: string, fontSizePx: number, box: DiagramBox): number | null {
+    const vb = svg.match(/viewBox\s*=\s*["']\s*[\d.eE+-]+\s+[\d.eE+-]+\s+([\d.eE+-]+)\s+([\d.eE+-]+)/);
+    if (!vb) return null;
+    const vw = Number(vb[1]);
+    const vh = Number(vb[2]);
+    if (!(vw > 0) || !(vh > 0)) return null;
+    // svgToPng normalizes the raster to 1200px wide; fitInBox is aspect-pure,
+    // so this reproduces exactly the size content.ts will place.
+    const placed = fitInBox({ width: 1200, height: (1200 * vh) / vw }, box.width, box.height);
+    return (fontSizePx / vw) * placed.width * 72;
+  }
+
+  async render(code: string, theme?: Theme, box?: DiagramBox): Promise<Buffer> {
     await this.initialize();
 
-    const mermaid = (await import('mermaid')).default;
     const id = `mfly-mermaid-${Date.now()}-${this.renderCounter++}`;
 
     let svg: string;
     const restore = installBrowserGlobals();
     try {
       // Re-apply per render so diagram follows the selected presentation theme
-      mermaid.initialize(this.buildConfig(theme) as unknown as Parameters<typeof mermaid.initialize>[0]);
-      ({ svg } = await mermaid.render(id, code.trim()));
+      let fontSizePx = 16;
+      svg = await this.renderSvg(id, code, theme, fontSizePx);
+      if (box) {
+        // Walk the font size toward the slide's reading size (≈14pt, the code
+        // text size — under body so diagram labels never shout over prose).
+        // Layout is near-linear in fontSize, so proportional steps converge
+        // fast; two corrections are usually plenty.
+        const targetPt = 14;
+        for (let pass = 0; pass < 2; pass++) {
+          const pt = this.onSlideTextPt(svg, fontSizePx, box);
+          if (pt == null || Math.abs(pt - targetPt) <= 1.2) break;
+          const next = Math.min(40, Math.max(10, (fontSizePx * targetPt) / pt));
+          if (Math.abs(next - fontSizePx) < 0.5) break;
+          fontSizePx = next;
+          svg = await this.renderSvg(`${id}-${pass}`, code, theme, fontSizePx);
+        }
+      }
     } catch (err) {
       throw new Error(
         `Mermaid render failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -695,5 +763,19 @@ export class MermaidDiagramRenderer implements DiagramRenderer {
     // Rasterized after the globals are gone, so the native addon also loads in a
     // clean Node environment.
     return svgToPng(svg, 1200);
+  }
+
+  private async renderSvg(id: string, code: string, theme: Theme | undefined, fontSizePx: number): Promise<string> {
+    const mermaid = (await import('mermaid')).default;
+    // The measurement polyfills below scale off this — set before the render.
+    layoutFontSizePx = fontSizePx;
+    mermaid.initialize(this.buildConfig(theme, fontSizePx) as unknown as Parameters<typeof mermaid.initialize>[0]);
+    const restore = installBrowserGlobals();
+    try {
+      const { svg } = await mermaid.render(id, code.trim());
+      return svg;
+    } finally {
+      restore();
+    }
   }
 }

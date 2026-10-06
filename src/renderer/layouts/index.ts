@@ -31,7 +31,11 @@ export interface RenderContext {
     videoPath: string,
     poster?: string,
   ) => Promise<{ data: string; source: 'poster' | 'frame' | 'themed' } | undefined>;
-  renderDiagram: (diagramType: string, code: string) => Promise<Buffer>;
+  renderDiagram: (
+    diagramType: string,
+    code: string,
+    box?: { width: number; height: number },
+  ) => Promise<Buffer>;
   /** Page footer template with {page}/{total}/{section}/{title} placeholders */
   footerTemplate?: string;
   pageNumber?: number;

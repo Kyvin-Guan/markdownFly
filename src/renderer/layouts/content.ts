@@ -28,6 +28,13 @@ import {
   titleRuleHeight,
   titleRuleRole,
 } from './layout-spec.js';
+import {
+  codeBlockHeight,
+  codeLineCount,
+  estimateBlockLines,
+  estimateTextLines,
+  fitCodeBlock,
+} from './measure.js';
 
 // Slide dimensions (16:9 LAYOUT_WIDE)
 const SLIDE_W = 13.33;
@@ -190,6 +197,7 @@ export async function renderContentSlide(
   }
 
   const grid = splitGrid(prepareElements(node));
+  const diagramSizes = await measureDiagramSizes(grid, ctx);
   const rows = grid.length;
   const availH = SLIDE_H - top - metrics.bottom - gridGap * (rows - 1);
 
@@ -198,11 +206,20 @@ export async function renderContentSlide(
   const ests = grid.map((columns) =>
     Math.max(
       0.8,
-      ...columns.map((c) => estimateColumnHeight(c, (drawW - gridGap * (columns.length - 1)) / columns.length, theme)),
+      ...columns.map((c) =>
+        estimateColumnHeight(c, (drawW - gridGap * (columns.length - 1)) / columns.length, theme, diagramSizes),
+      ),
     ),
   );
   const totalEst = ests.reduce((a, b) => a + b, 0);
-  const scale = totalEst > availH ? availH / totalEst : 1;
+  // Slides holding media (diagram/image/video) stretch their rows to fill the
+  // content area: media scales with its box, so spare estimate height becomes
+  // breathing room around the media instead of a dead band at the slide
+  // bottom. renderColumn centers each column within its grown row.
+  const hasMedia = grid.some((columns) =>
+    columns.some((column) => column.some((el) => el.type === 'diagram' || el.type === 'image' || el.type === 'video')),
+  );
+  const scale = hasMedia ? availH / totalEst : totalEst > availH ? availH / totalEst : 1;
 
   let y = top;
   for (let r = 0; r < rows; r++) {
@@ -219,6 +236,7 @@ export async function renderContentSlide(
         node,
         theme,
         ctx,
+        diagramSizes,
       );
     }
     y += rowH + gridGap;
@@ -251,53 +269,61 @@ function prepareElements(node: SlideNode): SlideElement[] {
   return elements;
 }
 
-/** Text-box insets on a code block (margin: [8, 12, 8, 12], in points). */
-const CODE_INSET_IN = 16 / 72;
-
 /**
- * PowerPoint lays a line out at roughly 1.2-1.25x its font size; rounding up
- * keeps the box slightly taller than the text rather than clipping it.
+ * Height of a list, in inches: each item gets its own wrap estimate (the
+ * bullet marker costs ~0.3in of the column's width) plus paragraph spacing,
+ * instead of a flat half inch per item that ignored wrapping and let the next
+ * element land on top of a long bullet's second line.
  */
-const CODE_LINE_FACTOR = 1.3;
-
-/**
- * Height a code block needs, in inches.
- *
- * The insets matter: they are 16pt of the total, which a bare lines x per-line
- * estimate misses — that is what left the last line of a block sticking out
- * below the dark fill.
- */
-function codeBlockHeight(lines: number, fontSizePt: number): number {
-  return Math.max(1.0, (lines * fontSizePt * CODE_LINE_FACTOR) / 72 + CODE_INSET_IN);
-}
-
-/** Display width of a string in Latin-equivalent units (CJK takes two). */
-function displayWidth(text: string): number {
-  let units = 0;
-  for (const char of text) {
-    units += (char.codePointAt(0) ?? 0) > 0x2e80 ? 2 : 1;
+function listHeightIn(items: string[], w: number, theme: Theme): number {
+  let h = 0;
+  for (const item of items) {
+    // The bullet marker costs ~0.3in of the column's width.
+    const lines = estimateTextLines(item, Math.max(1, w - 0.3), theme.fontSize.body);
+    h += lines * 0.35 + 0.15;
   }
-  return units;
+  return h;
 }
+
+/** Natural pixel size of a pre-measured diagram render, keyed by its element. */
+type DiagramSizeMap = WeakMap<object, { width: number; height: number }>;
 
 /**
- * Characters that fit on one line of `fontSizePt` text in a column `widthIn`
- * inches wide. Average advance is about half an em for Latin, so a 12in column
- * of 18pt text holds roughly 97 units — the previous estimate assumed 60 per
- * inch, ~7x too many, which made every paragraph look like a single line and
- * let the next element overlap it.
+ * Render every diagram in the grid once (default font size, no box) so the
+ * estimator knows each diagram's natural aspect. Mermaid layouts span wildly
+ * different shapes — a horizontal chain is ~15:1 while a TD flow is ~1:3 — and
+ * the old blanket w*0.5 estimate gave wide chains a row three times taller
+ * than their content, pooling dead space on the slide.
  */
-function charsPerLine(widthIn: number, fontSizePt: number): number {
-  return Math.max(8, Math.floor((widthIn * 72) / (fontSizePt * 0.5)));
-}
-
-/** Estimate wrapped text lines for a string in a column of width w (inches). */
-function estimateTextLines(content: string, w: number, fontSizePt: number): number {
-  return Math.max(1, Math.ceil(displayWidth(content) / charsPerLine(w, fontSizePt)));
+async function measureDiagramSizes(
+  grid: SlideElement[][][],
+  ctx: RenderContext,
+): Promise<DiagramSizeMap> {
+  const sizes: DiagramSizeMap = new WeakMap();
+  for (const row of grid) {
+    for (const column of row) {
+      for (const el of column) {
+        if (el.type !== 'diagram' || sizes.has(el)) continue;
+        try {
+          const png = await ctx.renderDiagram(el.diagramType, el.content);
+          const size = getImageSize(png);
+          if (size && size.width > 0 && size.height > 0) sizes.set(el, size);
+        } catch {
+          // Render errors surface again (with their placeholder) in renderElement
+        }
+      }
+    }
+  }
+  return sizes;
 }
 
 /** Cheap height estimate for a column of elements (inches). */
-function estimateColumnHeight(elements: SlideElement[], w: number, theme: Theme): number {
+function estimateColumnHeight(
+  elements: SlideElement[],
+  w: number,
+  theme: Theme,
+  diagramSizes?: DiagramSizeMap,
+): number {
   let h = 0;
   for (const el of elements) {
     switch (el.type) {
@@ -308,13 +334,14 @@ function estimateColumnHeight(elements: SlideElement[], w: number, theme: Theme)
         h += 0.7;
         break;
       case 'list':
-        h += el.items.length * 0.5;
+        h += listHeightIn(el.items, w, theme);
         break;
       case 'code':
-        h += codeBlockHeight(el.content.split('\n').length, theme.fontSize.code);
+        // Count the wraps long lines produce, not just the source lines.
+        h += codeBlockHeight(codeLineCount(el.content, w, theme.fontSize.code), theme.fontSize.code);
         break;
       case 'diagram':
-      case 'image':
+      case 'image': {
         // Most diagrams are wide (aspect ~1.5-3:1); assume ~2:1 and let the
         // actual render down-scale. Enough height to look deliberate.
         // Explicit image sizes are honored so a small icon doesn't eat the row.
@@ -322,10 +349,16 @@ function estimateColumnHeight(elements: SlideElement[], w: number, theme: Theme)
           h += parseFloat(el.height) + 0.2;
         } else if (el.type === 'image' && el.width && !el.width.endsWith('%')) {
           h += parseFloat(el.width) * 0.5 + 0.2;
+        } else if (el.type === 'diagram' && diagramSizes?.has(el)) {
+          // Natural aspect measured from the rendered diagram — an honest
+          // height for wide chains and tall flows alike, clamped to sane rows.
+          const size = diagramSizes.get(el)!;
+          h += Math.max(1.0, Math.min(4.5, w * (size.height / size.width)));
         } else {
           h += Math.min(4.5, Math.max(1.2, w * 0.5));
         }
         break;
+      }
       case 'video':
         // Same shape as image, but a video's natural size is unknown without a
         // probe — 16:9 is the assumption the renderer makes, mirrored here.
@@ -341,11 +374,15 @@ function estimateColumnHeight(elements: SlideElement[], w: number, theme: Theme)
         h += (el.rows.length + 1) * 0.4;
         break;
       case 'callout':
-        // Same adaptive sizing as the renderer: label row + one line per wrap
-        h += Math.min(4.5, 0.72 + estimateTextLines(el.content, w, theme.fontSize.body) * 0.3);
+        // Same adaptive sizing as the renderer: label row + one line per wrap.
+        // Body text renders at body-1 in a w-0.4 box; measure the same way.
+        h += Math.min(
+          4.5,
+          0.72 + estimateBlockLines(el.content, Math.max(1, w - 0.4), theme.fontSize.body - 1) * 0.3,
+        );
         break;
       case 'blockquote':
-        h += 1.0;
+        h += Math.max(0.5, estimateBlockLines(el.content, Math.max(1, w - 0.2), theme.fontSize.body) * 0.35 + 0.1) + 0.15;
         break;
       case 'break':
         break;
@@ -371,10 +408,11 @@ async function renderColumn(
   node: SlideNode,
   theme: Theme,
   ctx: RenderContext,
+  diagramSizes?: DiagramSizeMap,
 ): Promise<void> {
   // Vertically center content that is shorter than its grid cell — a
   // two-line column next to a diagram shouldn't hug the row's top edge.
-  const est = estimateColumnHeight(elements, box.w, theme);
+  const est = estimateColumnHeight(elements, box.w, theme, diagramSizes);
   const yPos = box.h > est ? box.y + (box.h - est) / 2 : box.y;
   let cursor = yPos;
   for (const element of elements) {
@@ -460,7 +498,7 @@ async function renderElement(
         return { text, options };
       });
 
-      const height = Math.max(0.8, Math.min(maxH, items.length * 0.5));
+      const height = Math.max(0.8, Math.min(maxH, listHeightIn(items.map((it) => it.text), w, theme)));
       slide.addText(items as PptxGenJS.TextProps[], {
         x,
         y: yPos,
@@ -477,31 +515,35 @@ async function renderElement(
         element.language ?? 'text',
         element.highlightLines,
       );
-      const lines = element.content.split('\n').length;
-      const height = Math.min(maxH, codeBlockHeight(lines, theme.fontSize.code));
+      // Wrapped long lines count as extra rows; if the block still can't fit,
+      // shrink the font instead of letting text escape the background fill.
+      const fit = fitCodeBlock(element.content, w, maxH, theme.fontSize.code);
 
       slide.addText(runs, {
         x,
         y: yPos,
         w,
-        h: height,
+        h: fit.height,
         fill: { color: theme.colors.codeBackground },
         fontFace: theme.fonts.code,
-        fontSize: theme.fontSize.code,
+        fontSize: fit.fontSize,
         color: theme.colors.codeText,
         valign: 'top',
         margin: [8, 12, 8, 12],
       });
-      return height + 0.2;
+      return fit.height + 0.2;
     }
 
     case 'diagram': {
       try {
-        const pngBuffer = await ctx.renderDiagram(element.diagramType, element.content);
+        const boxH = Math.max(1.2, maxH);
+        const pngBuffer = await ctx.renderDiagram(element.diagramType, element.content, {
+          width: w,
+          height: boxH,
+        });
         // Diagrams can be very wide (graphviz chains) or very tall (mermaid
         // flows) — scale into the box, aspect preserved.
         const imgSize = getImageSize(pngBuffer) ?? { width: 8, height: 3.5 };
-        const boxH = Math.max(1.2, maxH);
         const fitted = fitInBox(imgSize, w, boxH);
         const base64 = pngBuffer.toString('base64');
 
@@ -680,12 +722,14 @@ async function renderElement(
     }
 
     case 'blockquote': {
-      // Left accent border + italic text
+      // Left accent border + italic text; box grows with the wrapped content
+      const textLines = estimateBlockLines(element.content, Math.max(1, w - 0.2), theme.fontSize.body);
+      const boxH = Math.min(maxH, Math.max(0.5, textLines * 0.35 + 0.1));
       slide.addShape('rect' as PptxGenJS.ShapeType, {
         x,
         y: yPos,
         w: 0.06,
-        h: Math.min(0.8, maxH),
+        h: boxH,
         fill: { color: theme.colors.accent },
       });
 
@@ -693,14 +737,14 @@ async function renderElement(
         x: x + 0.2,
         y: yPos,
         w: w - 0.2,
-        h: Math.min(0.8, maxH),
+        h: boxH,
         fontSize: theme.fontSize.body,
         fontFace: theme.fonts.body,
         color: theme.colors.secondary,
         italic: true,
         valign: 'middle',
       });
-      return 1.0;
+      return boxH + 0.15;
     }
 
     case 'callout': {
@@ -716,8 +760,10 @@ async function renderElement(
       const color = palette[element.variant] ?? theme.colors.primary;
       const label = element.title ?? element.variant.toUpperCase();
 
-      // Card height adapts to content: label row + one line per wrapped line
-      const textLines = estimateTextLines(element.content, w, theme.fontSize.body);
+      // Card height adapts to content: label row + one line per wrapped line.
+      // Measure with the text's real box (w-0.4) and size (body-1) so the card
+      // never comes out shorter than what the body text actually occupies.
+      const textLines = estimateBlockLines(element.content, Math.max(1, w - 0.4), theme.fontSize.body - 1);
       const cardH = Math.min(maxH, 0.72 + textLines * 0.3);
       const textH = cardH - 0.44;
 
@@ -830,16 +876,22 @@ async function renderMinimalContent(
     h: inner.h,
   };
   const grid = splitGrid(prepareElements(node));
+  const diagramSizes = await measureDiagramSizes(grid, ctx);
   const rows = grid.length;
   const availH = innerBox.h - gap * (rows - 1);
   const ests = grid.map((columns) =>
     Math.max(
       0.8,
-      ...columns.map((c) => estimateColumnHeight(c, (innerBox.w - gap * (columns.length - 1)) / columns.length, theme)),
+      ...columns.map((c) =>
+        estimateColumnHeight(c, (innerBox.w - gap * (columns.length - 1)) / columns.length, theme, diagramSizes),
+      ),
     ),
   );
   const totalEst = ests.reduce((a, b) => a + b, 0);
-  const scale = totalEst > availH ? availH / totalEst : 1;
+  const hasMedia = grid.some((columns) =>
+    columns.some((column) => column.some((el) => el.type === 'diagram' || el.type === 'image' || el.type === 'video')),
+  );
+  const scale = hasMedia ? availH / totalEst : totalEst > availH ? availH / totalEst : 1;
 
   let y = innerBox.y;
   for (let r = 0; r < rows; r++) {
@@ -855,6 +907,7 @@ async function renderMinimalContent(
         node,
         theme,
         ctx,
+        diagramSizes,
       );
     }
     y += rowH + gap;

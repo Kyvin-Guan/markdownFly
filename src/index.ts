@@ -34,7 +34,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   const markdown = readFileSync(absInput, 'utf-8');
 
   // Parse
-  const presentation = parseMarkdown(markdown);
+  const presentation = parseMarkdown(markdown, absInput);
 
   // Theme + slot overrides come from frontmatter as base, CLI/API wins.
   // Slots: explicit CLI/API > frontmatter > theme preset slots (> default).

@@ -20,6 +20,7 @@ import { readFileSync } from 'node:fs';
 import { convert } from './index.js';
 import { expandGlob } from './utils/glob.js';
 import { ProgressReporter, log, setQuiet } from './utils/progress.js';
+import { takeSyntaxWarnings, type SyntaxDiagnostic } from './utils/diagnostics.js';
 import {
   hasTheme,
   themeNames,
@@ -29,6 +30,7 @@ import {
   listColorSchemes,
   listTextSchemes,
   listLayoutSchemes,
+  listThemePresets,
 } from './themes/index.js';
 
 const pkg = JSON.parse(
@@ -44,6 +46,9 @@ program
 
 const themeChoices = themeNames();
 
+const presetChoices = listThemePresets()
+  .map((p) => p.name)
+  .join(', ');
 const colorChoices = listColorSchemes()
   .map((s) => s.name)
   .join(', ');
@@ -58,7 +63,7 @@ const layoutChoices = listLayoutSchemes()
 program
   .argument('<files...>', 'Markdown files to convert (supports glob)')
   .option('-o, --output <path>', 'Output file path (single file only)')
-  .option('-t, --theme <name>', `Theme name (${themeChoices.join(', ')})`)
+  .option('-t, --theme <name>', `Theme preset (${presetChoices}) or color scheme (${colorChoices})`)
   .option('--color <name>', `Color scheme override (${colorChoices})`)
   .option('--text <name>', `Text scheme override (${textChoices})`)
   .option('--layout <name>', `Layout scheme override (${layoutChoices})`)
@@ -114,7 +119,15 @@ program
       }
 
       const startTime = Date.now();
-      const results: Array<{ input: string; output?: string; ok: boolean; error?: string }> = [];
+      type FileWarning = Pick<SyntaxDiagnostic, 'file' | 'line' | 'message' | 'hint'>;
+      const results: Array<{
+        input: string;
+        output?: string;
+        ok: boolean;
+        error?: string;
+        warnings?: FileWarning[];
+      }> = [];
+      let warningCount = 0;
 
       for (const file of files) {
         const progress = new ProgressReporter();
@@ -133,11 +146,15 @@ program
 
           const outName = outputPath.split(/[\\/]/).pop() ?? outputPath;
           progress.succeed(`${chalk.cyan(fileName)} → ${chalk.green(outName)}`);
-          results.push({ input: file, output: outputPath, ok: true });
+          const warnings = takeSyntaxWarnings();
+          warningCount += warnings.length;
+          results.push({ input: file, output: outputPath, ok: true, warnings });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           progress.fail(`${chalk.cyan(fileName)}: ${chalk.red(msg)}`);
-          results.push({ input: file, ok: false, error: msg });
+          const warnings = takeSyntaxWarnings();
+          warningCount += warnings.length;
+          results.push({ input: file, ok: false, error: msg, warnings });
         }
       }
 
@@ -147,11 +164,18 @@ program
         console.log(JSON.stringify({
           ok: failed.length === 0,
           durationMs: Date.now() - startTime,
+          warningCount,
           files: results,
         }));
       } else {
         if (failed.length > 0) {
           log.error(`${failed.length} of ${files.length} file(s) failed`);
+        }
+        if (warningCount > 0) {
+          log.warn(
+            `${warningCount} syntax warning(s) — the deck was generated anyway. ` +
+              'Fix the listed lines in the markdown and re-run to apply the corrections.',
+          );
         }
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         log.info(`Done in ${elapsed}s`);
