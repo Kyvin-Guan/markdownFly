@@ -51,7 +51,7 @@ No headless browser. No JVM. Just Node.
 
 ## 🧩 Install the Skill
 
-Drop this prompt into your AI assistant (ZCode, Claude Code, or any tool that
+Drop this prompt into your AI assistant (Claude Code、Codex、Cursor、OpenCode、WorkBuddy, or any tool that
 supports Agent Skills) — it handles the entire install for you:
 
 ```text

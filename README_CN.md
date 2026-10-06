@@ -51,7 +51,7 @@
 
 ## 🧩 安装 SKILL
 
-把下面这段话发给你的 AI 助手（ZCode、Claude Code 等支持 Agent Skills 的工具）—— 它会全程自动完成安装：
+把下面这段话发给你的 AI 助手（Claude Code、Codex、Cursor、OpenCode、WorkBuddy 等支持 Agent Skills 的工具）—— 它会全程自动完成安装：
 
 ```text
 请帮我安装 markdownfly skill：
